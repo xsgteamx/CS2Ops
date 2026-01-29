@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CS2Ops</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">
+        <h1>CS2Ops</h1>
+        <p class="small">Tipp: Browser fragt nach Login (Basic Auth). Panel läuft lokal.</p>
+      </div>
+
+      <div class="actions">
+        <span class="badge" id="themeBadge">Light</span>
+        <button class="btn btn-primary" id="themeToggle" title="Darkmode umschalten">
+          <span class="icon" aria-hidden="true">🌙</span>
+          <span style="font-weight:900;">Darkmode</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- CVAR -->
+      <div class="card cfg">
+        <h2>Configs / CVARs <span class="badge">CVAR</span></h2>
+        <div class="row">
+          <input id="cvarName" class="grow" placeholder="mp_afterroundmoney">
+          <input id="cvarValue" class="grow" placeholder="z.B. 16000">
+          <button class="btn btn-action" id="cvarSet">Setzen</button>
+        </div>
+
+        <div class="pillbar">
+          <button class="pill" data-cvar="mp_afterroundmoney" data-val="16000">mp_afterroundmoney=16000</button>
+          <button class="pill" data-cvar="mp_round_restart_delay" data-val="7">mp_round_restart_delay=7</button>
+          <button class="pill" data-cvar="mp_restartgame" data-val="1">mp_restartgame=1</button>
+        </div>
+      </div>
+
+      <!-- MAP -->
+      <div class="card map">
+        <h2>Map wechseln <span class="badge">MAP</span></h2>
+
+        <div id="maps" class="map-grid"></div>
+
+        <div class="section-title">
+          <div class="badge">WORKSHOP FAVORITEN</div>
+          <button class="mini-btn mini-danger" id="wsClear" title="Alle gespeicherten Workshop Maps löschen">Clear</button>
+        </div>
+
+        <div id="workshopSaved" class="ws-list"></div>
+
+        <hr class="divider">
+
+        <div class="row">
+          <input id="workshopId" class="grow" placeholder="Workshop Map ID (z.B. 3070689635)">
+          <input id="workshopName" class="grow" placeholder="Name (z.B. Aim Map / Mirage Night)">
+          <button class="btn btn-action" id="wsStart">Workshop starten</button>
+          <button class="btn" id="wsSave">Speichern</button>
+        </div>
+
+        <p class="subtle">Gespeicherte Workshop Maps werden im Browser (localStorage) gehalten.</p>
+      </div>
+
+      <!-- PLAYERS -->
+      <div class="card players">
+        <h2>User / Spieler <span class="badge">PLAYERS</span></h2>
+
+        <div class="players-top">
+          <input id="playerSearch" class="grow" placeholder="Spieler suchen (Name/UserID)..." autocomplete="off">
+          <input id="kickReason" class="grow" placeholder="Kick Grund (optional)">
+          <span class="tag" id="playerCount">0 online</span>
+          <button class="btn" id="playersReload">Neu laden</button>
+        </div>
+
+        <div id="playersList" class="players-list"></div>
+      </div>
+
+      <!-- CONSOLE -->
+      <div class="card span-2">
+        <h2>Konsole <span class="badge">RCON</span></h2>
+
+        <div class="row console-row">
+          <div class="console-input-wrap">
+            <input id="cmd" class="grow" placeholder="status / mp_round_restart_delay 7 / ..." autocomplete="off">
+            <div id="ac"></div>
+          </div>
+
+          <button class="btn btn-action" id="cmdSend">Senden</button>
+        </div>
+
+        <textarea id="out" readonly placeholder="Output..."></textarea>
+      </div>
+
+      <!-- LOGS -->
+      <div class="card span-2">
+        <h2>Live Logs <span class="badge" id="logBadge">LIVE</span></h2>
+        <div class="row">
+          <button class="btn" id="logClear">Clear</button>
+          <label class="toggle">
+            <input type="checkbox" id="rconToggle">
+            <span>show RCON logs</span>
+          </label>
+        </div>
+        <pre id="logbox" class="mono logbox"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
