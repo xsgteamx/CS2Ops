@@ -13,7 +13,6 @@
     <div class="topbar">
       <div class="brand">
         <h1>CS2Ops</h1>
-        <p class="small">Tipp: Browser fragt nach Login (Basic Auth). Panel läuft lokal.</p>
       </div>
 
       <div class="actions">
@@ -32,7 +31,7 @@
         <div class="row">
           <input id="cvarName" class="grow" placeholder="mp_afterroundmoney">
           <input id="cvarValue" class="grow" placeholder="z.B. 16000">
-          <button class="btn btn-action" id="cvarSet">Setzen</button>
+          <button class="btn btn-action" id="cvarSet">Set</button>
         </div>
 
         <div class="pillbar">
@@ -44,12 +43,12 @@
 
       <!-- MAP -->
       <div class="card map">
-        <h2>Map wechseln <span class="badge">MAP</span></h2>
+        <h2>Change map <span class="badge">MAP</span></h2>
 
         <div id="maps" class="map-grid"></div>
 
         <div class="section-title">
-          <div class="badge">WORKSHOP FAVORITEN</div>
+          <div class="badge">WORKSHOP FAVORITES</div>
           <button class="mini-btn mini-danger" id="wsClear" title="Alle gespeicherten Workshop Maps löschen">Clear</button>
         </div>
 
@@ -60,22 +59,22 @@
         <div class="row">
           <input id="workshopId" class="grow" placeholder="Workshop Map ID (z.B. 3070689635)">
           <input id="workshopName" class="grow" placeholder="Name (z.B. Aim Map / Mirage Night)">
-          <button class="btn btn-action" id="wsStart">Workshop starten</button>
-          <button class="btn" id="wsSave">Speichern</button>
+          <button class="btn btn-action" id="wsStart">Start workshop</button>
+          <button class="btn" id="wsSave">Save map</button>
         </div>
 
-        <p class="subtle">Gespeicherte Workshop Maps werden im Browser (localStorage) gehalten.</p>
+        <p class="subtle">Workshop favorites will be saved in the local storage of the browser.</p>
       </div>
 
       <!-- PLAYERS -->
       <div class="card players">
-        <h2>User / Spieler <span class="badge">PLAYERS</span></h2>
+        <h2>Users / Players <span class="badge">PLAYERS</span></h2>
 
         <div class="players-top">
           <input id="playerSearch" class="grow" placeholder="Spieler suchen (Name/UserID)..." autocomplete="off">
           <input id="kickReason" class="grow" placeholder="Kick Grund (optional)">
           <span class="tag" id="playerCount">0 online</span>
-          <button class="btn" id="playersReload">Neu laden</button>
+          <button class="btn" id="playersReload">Reload</button>
         </div>
 
         <div id="playersList" class="players-list"></div>
@@ -83,7 +82,7 @@
 
       <!-- CONSOLE -->
       <div class="card span-2">
-        <h2>Konsole <span class="badge">RCON</span></h2>
+        <h2>Console <span class="badge">RCON</span></h2>
 
         <div class="row console-row">
           <div class="console-input-wrap">
@@ -91,7 +90,7 @@
             <div id="ac"></div>
           </div>
 
-          <button class="btn btn-action" id="cmdSend">Senden</button>
+          <button class="btn btn-action" id="cmdSend">Send</button>
         </div>
 
         <textarea id="out" readonly placeholder="Output..."></textarea>
