@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -16,40 +16,75 @@
       </div>
 
       <div class="actions">
+        <div class="locale-switch" role="group" aria-label="Language">
+          <button class="locale-option" type="button" data-locale="zh-CN">中</button>
+          <button class="locale-option" type="button" data-locale="en">EN</button>
+        </div>
         <span class="badge" id="themeBadge">Light</span>
-        <button class="btn btn-primary" id="themeToggle" title="Darkmode umschalten">
-          <span class="icon" aria-hidden="true">🌙</span>
-          <span style="font-weight:900;">Darkmode</span>
+        <button class="btn btn-primary" id="themeToggle" data-i18n-title="theme.toggleTitle">
+          <span class="icon" aria-hidden="true">Dark</span>
+          <span class="btn-label" data-i18n="theme.toggle">Dark mode</span>
         </button>
+        <button class="btn" id="logoutBtn" data-i18n="common.logout">Logout</button>
       </div>
     </div>
 
     <div class="grid">
-      <!-- CVAR -->
       <div class="card cfg">
-        <h2>Configs / CVARs <span class="badge">CVAR</span></h2>
+        <h2><span data-i18n="cvar.title">Configs / CVARs</span> <span class="badge">CVAR</span></h2>
         <div class="row">
           <input id="cvarName" class="grow" placeholder="mp_afterroundmoney">
-          <input id="cvarValue" class="grow" placeholder="z.B. 16000">
-          <button class="btn btn-action" id="cvarSet">Set</button>
+          <input id="cvarValue" class="grow" data-i18n-placeholder="cvar.valuePlaceholder" placeholder="e.g. 16000">
+          <button class="btn btn-action" id="cvarSet" data-i18n="common.set">Set</button>
         </div>
 
-        <div class="pillbar">
-          <button class="pill" data-cvar="mp_afterroundmoney" data-val="16000">mp_afterroundmoney=16000</button>
-          <button class="pill" data-cvar="mp_round_restart_delay" data-val="7">mp_round_restart_delay=7</button>
-          <button class="pill" data-cvar="mp_restartgame" data-val="1">mp_restartgame=1</button>
+        <div class="preset-groups">
+          <div class="preset-group">
+            <div class="preset-title" data-i18n="cvar.matchPresets">比赛</div>
+            <div class="pillbar">
+              <button class="pill" data-cvar="mp_freezetime" data-val="15">冻结 15s <span>mp_freezetime</span></button>
+              <button class="pill" data-cvar="mp_freezetime" data-val="0">无冻结 <span>mp_freezetime</span></button>
+              <button class="pill" data-cvar="mp_roundtime_defuse" data-val="1.92">回合 1:55 <span>mp_roundtime_defuse</span></button>
+              <button class="pill" data-cvar="mp_maxrounds" data-val="24">MR12 <span>mp_maxrounds</span></button>
+              <button class="pill" data-cvar="mp_overtime_enable" data-val="1">开启加时 <span>mp_overtime_enable</span></button>
+              <button class="pill" data-cvar="mp_restartgame" data-val="1">重开 1s <span>mp_restartgame</span></button>
+            </div>
+          </div>
+
+          <div class="preset-group">
+            <div class="preset-title" data-i18n="cvar.moneyPresets">经济</div>
+            <div class="pillbar">
+              <button class="pill" data-cvar="mp_startmoney" data-val="800">$800 开局 <span>mp_startmoney</span></button>
+              <button class="pill" data-cvar="mp_startmoney" data-val="16000">$16000 开局 <span>mp_startmoney</span></button>
+              <button class="pill" data-cvar="mp_maxmoney" data-val="16000">金钱上限 16000 <span>mp_maxmoney</span></button>
+              <button class="pill" data-cvar="mp_afterroundmoney" data-val="16000">每回合补满 <span>mp_afterroundmoney</span></button>
+              <button class="pill" data-cvar="mp_buytime" data-val="9999">长买枪时间 <span>mp_buytime</span></button>
+              <button class="pill" data-cvar="mp_buy_anywhere" data-val="1">任意地点买枪 <span>mp_buy_anywhere</span></button>
+            </div>
+          </div>
+
+          <div class="preset-group">
+            <div class="preset-title" data-i18n="cvar.practicePresets">练习</div>
+            <div class="pillbar">
+              <button class="pill" data-cvar="sv_cheats" data-val="1">练习权限 <span>sv_cheats</span></button>
+              <button class="pill" data-cvar="sv_infinite_ammo" data-val="1">无限弹药 <span>sv_infinite_ammo</span></button>
+              <button class="pill" data-cvar="ammo_grenade_limit_total" data-val="5">五颗投掷物 <span>ammo_grenade_limit_total</span></button>
+              <button class="pill" data-cvar="sv_grenade_trajectory_prac_pipreview" data-val="1">投掷预览 <span>grenade preview</span></button>
+              <button class="pill" data-cvar="mp_warmup_end" data-val="1">结束热身 <span>mp_warmup_end</span></button>
+              <button class="pill" data-cvar="bot_quota" data-val="0">清空 Bot <span>bot_quota</span></button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- MAP -->
       <div class="card map">
-        <h2>Change map <span class="badge">MAP</span></h2>
+        <h2><span data-i18n="map.title">Change map</span> <span class="badge">MAP</span></h2>
 
         <div id="maps" class="map-grid"></div>
 
         <div class="section-title">
-          <div class="badge">WORKSHOP FAVORITES</div>
-          <button class="mini-btn mini-danger" id="wsClear" title="Delete all saved workshop maps">Clear</button>
+          <div class="badge" data-i18n="workshop.favorites">WORKSHOP FAVORITES</div>
+          <button class="mini-btn mini-danger" id="wsClear" data-i18n="common.clear" data-i18n-title="workshop.clearTitle" title="Delete all saved workshop maps">Clear</button>
         </div>
 
         <div id="workshopSaved" class="ws-list"></div>
@@ -57,32 +92,30 @@
         <hr class="divider">
 
         <div class="row">
-          <input id="workshopId" class="grow" placeholder="Workshop Map ID (e.g. 3070689635)">
-          <input id="workshopName" class="grow" placeholder="Name (e.g. Aim Map / Mirage Night)">
-          <button class="btn btn-action" id="wsStart">Start workshop</button>
-          <button class="btn" id="wsSave">Save map</button>
+          <input id="workshopId" class="grow" data-i18n-placeholder="workshop.idPlaceholder" placeholder="Workshop Map ID (e.g. 3070689635)">
+          <input id="workshopName" class="grow" data-i18n-placeholder="workshop.namePlaceholder" placeholder="Name (e.g. Aim Map / Mirage Night)">
+          <button class="btn btn-action" id="wsStart" data-i18n="workshop.start">Start workshop</button>
+          <button class="btn" id="wsSave" data-i18n="workshop.save">Save map</button>
         </div>
 
-        <p class="subtle">Workshop favorites will be saved in the local storage of the browser.</p>
+        <p class="subtle" data-i18n="workshop.localHint">Workshop favorites will be saved in the local storage of the browser.</p>
       </div>
 
-      <!-- PLAYERS -->
       <div class="card players">
-        <h2>Users / Players <span class="badge">PLAYERS</span></h2>
+        <h2><span data-i18n="players.title">Users / Players</span> <span class="badge">PLAYERS</span></h2>
 
         <div class="players-top">
-          <input id="playerSearch" class="grow" placeholder="Search player (Name/UserID)..." autocomplete="off">
-          <input id="kickReason" class="grow" placeholder="Kick reason (optional)">
+          <input id="playerSearch" class="grow" data-i18n-placeholder="players.searchPlaceholder" placeholder="Search player (Name/UserID)..." autocomplete="off">
+          <input id="kickReason" class="grow" data-i18n-placeholder="players.kickReasonPlaceholder" placeholder="Kick reason (optional)">
           <span class="tag" id="playerCount">0 online</span>
-          <button class="btn" id="playersReload">Reload</button>
+          <button class="btn icon-btn" id="playersReload" data-i18n-title="common.reload" title="Reload" aria-label="Reload"><span aria-hidden="true">&#8635;</span></button>
         </div>
 
         <div id="playersList" class="players-list"></div>
       </div>
 
-      <!-- CONSOLE -->
-      <div class="card span-2">
-        <h2>Console <span class="badge">RCON</span></h2>
+      <div class="card span-2 console-card">
+        <h2><span data-i18n="console.title">Console</span> <span class="badge">RCON</span></h2>
 
         <div class="row console-row">
           <div class="console-input-wrap">
@@ -90,20 +123,31 @@
             <div id="ac"></div>
           </div>
 
-          <button class="btn btn-action" id="cmdSend">Send</button>
+          <button class="btn btn-action" id="cmdSend" data-i18n="common.send">Send</button>
         </div>
 
-        <textarea id="out" readonly placeholder="Output..."></textarea>
+        <textarea id="out" readonly data-i18n-placeholder="console.outputPlaceholder" placeholder="Output..."></textarea>
       </div>
 
-      <!-- LOGS -->
-      <div class="card span-2">
-        <h2>Live Logs <span class="badge" id="logBadge">LIVE</span></h2>
-        <div class="row">
-          <button class="btn" id="logClear">Clear</button>
+      <div class="card span-2 logs-card">
+        <h2><span data-i18n="logs.title">HTTP Remote Logs</span> <span class="badge" id="logBadge">WAITING</span></h2>
+        <div class="log-status-grid">
+          <div><span data-i18n="logs.source">Log source</span><strong id="logSourceText">-</strong></div>
+          <div><span data-i18n="logs.receiveState">Receiver state</span><strong id="logReceiveState">WAITING</strong></div>
+          <div><span data-i18n="logs.lastReceived">Last received</span><strong id="logLastReceived">-</strong></div>
+          <div><span data-i18n="logs.sseClients">SSE clients</span><strong id="logClientCount">0</strong></div>
+          <div><span data-i18n="logs.totalLines">Total lines</span><strong id="logTotalLines">0</strong></div>
+          <div><span data-i18n="logs.receiverUrl">Receiver URL</span><strong id="logPublicUrl">-</strong></div>
+        </div>
+        <div class="row log-action-row">
+          <button class="btn btn-action" id="logRegisterHttp" data-i18n="logs.enablePush">Enable push</button>
+          <button class="btn" id="logUnregisterHttp" data-i18n="logs.disablePush">Disable push</button>
+          <button class="btn" id="logTest" data-i18n="logs.test">Test log</button>
+          <button class="btn" id="logRefreshStatus" data-i18n="logs.refresh">Refresh status</button>
+          <button class="btn" id="logClear" data-i18n="common.clear">Clear</button>
           <label class="toggle">
             <input type="checkbox" id="rconToggle">
-            <span>show RCON logs</span>
+            <span data-i18n="logs.showRcon">Show RCON logs</span>
           </label>
         </div>
         <pre id="logbox" class="mono logbox"></pre>

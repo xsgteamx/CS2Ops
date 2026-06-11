@@ -75,7 +75,7 @@ You need:
 - A Linux host (recommended)
 - **Node.js + npm**
 - A working **CS2 Dedicated Server** with RCON enabled
-- Best setup: CS2 running locally in Docker
+- CS2 Dedicated Server can run locally in Docker, or remotely if HTTP remote logs are enabled
 
 Recommended CS2 Docker project:
 
@@ -86,7 +86,17 @@ Recommended CS2 Docker project:
 ```bash
 docker logs -f <container>
 ```
-So CS2 should run on the same machine/container host for log streaming to work out of the box.
+Original Docker log mode expects CS2 to run on the same Docker host. For VPS panel + LAN CS2 server deployments, use HTTP remote logs with `LOG_SOURCE=http`.
+
+CS2Ops supports:
+
+```env
+LOG_SOURCE=docker  # docker logs -f, original local Docker mode
+LOG_SOURCE=http    # CS2 logaddress_add_http remote receiver
+LOG_SOURCE=none    # disable live logs, keep RCON features
+```
+
+See [docs/remote-http-log.md](docs/remote-http-log.md) for the HTTP remote log setup.
 
 ## Installation
 

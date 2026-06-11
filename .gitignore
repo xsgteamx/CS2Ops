@@ -1,2 +1,4 @@
 .env
 node_modules/
+AGENTS.md
+docs/CODEX_TASK_CS2OPS_HTTP_REMOTE_LOG.md

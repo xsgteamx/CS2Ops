@@ -24,15 +24,332 @@ function softErr(msg, err) {
   }
 }
 
+function formatTemplate(text, vars = {}) {
+  return String(text ?? "").replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? "");
+}
+
+function t(key, vars = {}) {
+  const lookup = (locale) => key.split(".").reduce((obj, part) => obj?.[part], I18N[locale]);
+  return formatTemplate(lookup(currentLocale) ?? lookup("en") ?? key, vars);
+}
+
+function applyI18n() {
+  document.documentElement.lang = currentLocale;
+
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+    el.setAttribute("placeholder", t(el.dataset.i18nPlaceholder));
+  });
+
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    el.setAttribute("title", t(el.dataset.i18nTitle));
+  });
+
+  const select = $("localeSelect");
+  if (select) select.value = currentLocale;
+
+  document.querySelectorAll(".locale-option").forEach((btn) => {
+    const active = btn.dataset.locale === currentLocale;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  localizeCvarPresets();
+}
+
+function setLocale(locale) {
+  currentLocale = I18N[locale] ? locale : "zh-CN";
+  try { localStorage.setItem(LOCALE_KEY, currentLocale); } catch {}
+  applyI18n();
+  applyTheme(document.documentElement.getAttribute("data-theme") || "light");
+  renderWorkshopSaved();
+  renderPlayers();
+  renderLogStatus(latestLogStatus);
+}
+
+function localizeCvarPresets() {
+  document.querySelectorAll(".pill[data-cvar][data-val]").forEach((btn) => {
+    const key = `${btn.dataset.cvar}:${btn.dataset.val}`;
+    const label =
+      I18N[currentLocale]?.cvar?.presets?.[key] ||
+      I18N.en?.cvar?.presets?.[key] ||
+      key;
+    const command = `${btn.dataset.cvar || ""} ${btn.dataset.val || ""}`.trim();
+    btn.replaceChildren(document.createTextNode(label), document.createElement("span"));
+    const span = btn.querySelector("span");
+    if (span) span.textContent = btn.dataset.cvar || "";
+    btn.dataset.command = command;
+    btn.title = command;
+  });
+}
+
 /* ===== Config ===== */
 const PAGE_SIZE = 5;
 const WS_KEY = "cs2ops_workshop_favs_v2";
 const SHOW_RCON_KEY = "cs2ops_show_rcon_logs_v1";
+const LOCALE_KEY = "cs2ops_locale_v1";
+
+const I18N = {
+  "zh-CN": {
+    common: {
+      set: "设置",
+      clear: "清空",
+      reload: "刷新",
+      send: "发送",
+      logout: "退出",
+      ok: "OK",
+    },
+    theme: {
+      light: "浅色",
+      dark: "深色",
+      toggle: "切换主题",
+      toggleTitle: "切换深色 / 浅色模式",
+      lightMode: "浅色模式",
+      darkMode: "深色模式",
+      toLight: "浅色",
+      toDark: "深色",
+    },
+    cvar: {
+      title: "配置 / CVAR",
+      valuePlaceholder: "例如 16000",
+      matchPresets: "比赛",
+      moneyPresets: "经济",
+      practicePresets: "练习",
+      presets: {
+        "mp_freezetime:15": "冻结 15s",
+        "mp_freezetime:0": "无冻结",
+        "mp_roundtime_defuse:1.92": "回合 1:55",
+        "mp_maxrounds:24": "MR12",
+        "mp_overtime_enable:1": "开启加时",
+        "mp_restartgame:1": "重开 1s",
+        "mp_startmoney:800": "$800 开局",
+        "mp_startmoney:16000": "$16000 开局",
+        "mp_maxmoney:16000": "金钱上限 16000",
+        "mp_afterroundmoney:16000": "每回合补满",
+        "mp_buytime:9999": "长买枪时间",
+        "mp_buy_anywhere:1": "任意地点买枪",
+        "sv_cheats:1": "练习权限",
+        "sv_infinite_ammo:1": "无限弹药",
+        "ammo_grenade_limit_total:5": "五颗投掷物",
+        "sv_grenade_trajectory_prac_pipreview:1": "投掷预览",
+        "mp_warmup_end:1": "结束热身",
+        "bot_quota:0": "清空 Bot"
+      },
+    },
+    map: {
+      title: "切换地图",
+      standard: "官方地图",
+    },
+    workshop: {
+      favorites: "WORKSHOP 收藏",
+      clearTitle: "删除所有已保存的 Workshop 地图",
+      idPlaceholder: "Workshop 地图 ID，例如 3070689635",
+      namePlaceholder: "名称，例如 Aim Map / Mirage Night",
+      start: "启动 Workshop",
+      save: "保存地图",
+      localHint: "Workshop 收藏会保存在当前浏览器的本地存储中。",
+      empty: "还没有保存 Workshop 地图。",
+      unnamed: "未命名",
+      renamePrompt: "Workshop 地图名称：",
+      invalidId: "提示：Workshop ID 必须是数字。",
+      duplicateId: "这个 Workshop ID 已经保存过了。",
+      saved: "已保存 Workshop：",
+      cleared: "Workshop 收藏已清空。",
+      rename: "命名",
+      delete: "删除",
+    },
+    players: {
+      title: "用户 / 玩家",
+      searchPlaceholder: "搜索玩家（名称 / UserID）...",
+      kickReasonPlaceholder: "踢出原因（可选）",
+      online: "在线",
+      empty: "当前没有玩家在线。",
+      loading: "正在刷新玩家...",
+      noMatch: "没有匹配结果。",
+      tableName: "玩家",
+      tableUserId: "UserID",
+      tableSteam: "SteamID64",
+      tableAction: "操作",
+      kick: "踢出",
+      prev: "上一页",
+      next: "下一页",
+      page: "第 {page} / {total} 页",
+      unknown: "未知",
+    },
+    console: {
+      title: "控制台",
+      outputPlaceholder: "输出...",
+      ready: "CS2Ops 已就绪",
+    },
+    logs: {
+      title: "HTTP 远程日志",
+      source: "日志来源",
+      receiveState: "接收状态",
+      lastReceived: "最近收到",
+      sseClients: "SSE 客户端",
+      totalLines: "总日志行数",
+      receiverUrl: "接收地址",
+      enablePush: "启用推送",
+      disablePush: "取消推送",
+      test: "测试日志",
+      refresh: "刷新状态",
+      showRcon: "显示 RCON 日志",
+      httpRemote: "HTTP 远程日志",
+      docker: "Docker 本机日志",
+      disabled: "日志已禁用",
+      justNow: "刚刚",
+      secondsAgo: "{n} 秒前",
+      minutesAgo: "{n} 分钟前",
+      hoursAgo: "{n} 小时前",
+      registerAction: "启用 HTTP 日志推送",
+      unregisterAction: "取消 HTTP 日志推送",
+      testAction: "发送测试日志",
+      eventSourceError: "实时日志无法启动（EventSource）。",
+    },
+    errors: {
+      cvar: "CVAR 错误",
+      workshop: "Workshop 错误",
+      command: "命令错误",
+      maps: "地图加载错误",
+      logStatus: "日志状态错误",
+      registerLog: "启用 HTTP 日志失败",
+      unregisterLog: "取消 HTTP 日志失败",
+      testLog: "发送测试日志失败",
+      init: "初始化失败，请检查页面元素。",
+    },
+  },
+  en: {
+    common: { set: "Set", clear: "Clear", reload: "Reload", send: "Send", logout: "Logout", ok: "OK" },
+    theme: {
+      light: "Light",
+      dark: "Dark",
+      toggle: "Dark mode",
+      toggleTitle: "Toggle dark / light mode",
+      lightMode: "Light mode",
+      darkMode: "Dark mode",
+      toLight: "Light",
+      toDark: "Dark",
+    },
+    cvar: {
+      title: "Configs / CVARs",
+      valuePlaceholder: "e.g. 16000",
+      matchPresets: "Match",
+      moneyPresets: "Money",
+      practicePresets: "Practice",
+      presets: {
+        "mp_freezetime:15": "Freeze 15s",
+        "mp_freezetime:0": "No freeze",
+        "mp_roundtime_defuse:1.92": "Round 1:55",
+        "mp_maxrounds:24": "MR12",
+        "mp_overtime_enable:1": "Overtime on",
+        "mp_restartgame:1": "Restart 1s",
+        "mp_startmoney:800": "$800 start",
+        "mp_startmoney:16000": "$16000 start",
+        "mp_maxmoney:16000": "Money cap 16000",
+        "mp_afterroundmoney:16000": "Refill after round",
+        "mp_buytime:9999": "Long buy time",
+        "mp_buy_anywhere:1": "Buy anywhere",
+        "sv_cheats:1": "Practice access",
+        "sv_infinite_ammo:1": "Infinite ammo",
+        "ammo_grenade_limit_total:5": "Five grenades",
+        "sv_grenade_trajectory_prac_pipreview:1": "Grenade preview",
+        "mp_warmup_end:1": "End warmup",
+        "bot_quota:0": "Clear bots"
+      },
+    },
+    map: { title: "Change map", standard: "Standard Map" },
+    workshop: {
+      favorites: "WORKSHOP FAVORITES",
+      clearTitle: "Delete all saved workshop maps",
+      idPlaceholder: "Workshop Map ID (e.g. 3070689635)",
+      namePlaceholder: "Name (e.g. Aim Map / Mirage Night)",
+      start: "Start workshop",
+      save: "Save map",
+      localHint: "Workshop favorites will be saved in the local storage of the browser.",
+      empty: "No workshop maps saved yet.",
+      unnamed: "unnamed",
+      renamePrompt: "Workshop map name:",
+      invalidId: "Hint: Workshop ID must be numeric.",
+      duplicateId: "This Workshop ID is already saved.",
+      saved: "Workshop saved:",
+      cleared: "Workshop favorites cleared.",
+      rename: "Name",
+      delete: "Delete",
+    },
+    players: {
+      title: "Users / Players",
+      searchPlaceholder: "Search player (Name/UserID)...",
+      kickReasonPlaceholder: "Kick reason (optional)",
+      online: "online",
+      empty: "No players online.",
+      loading: "Refreshing players...",
+      noMatch: "No matches.",
+      tableName: "Player",
+      tableUserId: "UserID",
+      tableSteam: "SteamID64",
+      tableAction: "Action",
+      kick: "Kick",
+      prev: "Prev",
+      next: "Next",
+      page: "Page {page} / {total}",
+      unknown: "unknown",
+    },
+    console: { title: "Console", outputPlaceholder: "Output...", ready: "CS2Ops ready" },
+    logs: {
+      title: "HTTP Remote Logs",
+      source: "Log source",
+      receiveState: "Receiver state",
+      lastReceived: "Last received",
+      sseClients: "SSE clients",
+      totalLines: "Total lines",
+      receiverUrl: "Receiver URL",
+      enablePush: "Enable push",
+      disablePush: "Disable push",
+      test: "Test log",
+      refresh: "Refresh status",
+      showRcon: "Show RCON logs",
+      httpRemote: "HTTP Remote",
+      docker: "Docker",
+      disabled: "Disabled",
+      justNow: "just now",
+      secondsAgo: "{n}s ago",
+      minutesAgo: "{n}m ago",
+      hoursAgo: "{n}h ago",
+      registerAction: "Register HTTP log push",
+      unregisterAction: "Unregister HTTP log push",
+      testAction: "Send test log",
+      eventSourceError: "Live Logs could not be started (EventSource).",
+    },
+    errors: {
+      cvar: "cvar error",
+      workshop: "workshop error",
+      command: "command error",
+      maps: "maps error",
+      logStatus: "log status error",
+      registerLog: "register http log error",
+      unregisterLog: "unregister http log error",
+      testLog: "test log error",
+      init: "Init crashed (check missing IDs in index.html).",
+    },
+  },
+};
+
+let currentLocale = (() => {
+  try {
+    return localStorage.getItem(LOCALE_KEY) || "zh-CN";
+  } catch {
+    return "zh-CN";
+  }
+})();
 
 let acTimer = null;
 
 let playersPage = 1;
 let playersMax = null;
+let playersLoading = true;
 let lastStatusAt = 0;
 
 let playersCache = [];
@@ -40,6 +357,7 @@ let playersInterval = null;
 
 let logEventSource = null;
 let logReconnectTimer = null;
+let latestLogStatus = null;
 
 let showRconLogs = (() => {
   try {
@@ -92,10 +410,13 @@ function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
 
   const badge = $("themeBadge");
-  if (badge) badge.textContent = theme === "dark" ? "Dark" : "Light";
+  if (badge) badge.textContent = theme === "dark" ? t("theme.dark") : t("theme.light");
 
   const icon = document.querySelector("#themeToggle .icon");
-  if (icon) icon.textContent = theme === "dark" ? "☀️" : "🌙";
+  if (icon) icon.textContent = "◐";
+
+  const label = document.querySelector("#themeToggle .btn-label");
+  if (label) label.textContent = theme === "dark" ? t("theme.lightMode") : t("theme.darkMode");
 }
 
 function toggleTheme() {
@@ -244,7 +565,7 @@ function renderWorkshopSaved() {
   if (!list.length) {
     const empty = document.createElement("div");
     empty.className = "muted";
-    empty.textContent = "Noch keine Workshop Maps gespeichert.";
+    empty.textContent = t("workshop.empty");
     wrap.appendChild(empty);
     return;
   }
@@ -265,7 +586,7 @@ function renderWorkshopSaved() {
 
     const name = document.createElement("div");
     name.className = "ws-name";
-    name.textContent = item.name ? item.name : "(ohne Name)";
+    name.textContent = item.name ? item.name : `(${t("workshop.unnamed")})`;
 
     const id = document.createElement("div");
     id.className = "ws-id";
@@ -282,7 +603,7 @@ function renderWorkshopSaved() {
 
     const play = document.createElement("button");
     play.className = "mini-btn";
-    play.textContent = "Start";
+    play.textContent = t("workshop.start");
     play.addEventListener("click", async () => {
       const r = await api("/api/map/workshop", { id: item.id });
       appendOut("> host_workshop_map " + item.id + "\n" + (r.out || "OK"));
@@ -291,9 +612,9 @@ function renderWorkshopSaved() {
 
     const edit = document.createElement("button");
     edit.className = "mini-btn";
-    edit.textContent = "Name";
+    edit.textContent = t("workshop.rename");
     edit.addEventListener("click", () => {
-      const newName = prompt("Name für Workshop Map:", item.name || "");
+      const newName = prompt(t("workshop.renamePrompt"), item.name || "");
       if (newName === null) return;
       const trimmed = String(newName).trim();
       const next = getWorkshopSaved().map((x) => (x.id === item.id ? { ...x, name: trimmed } : x));
@@ -303,7 +624,7 @@ function renderWorkshopSaved() {
 
     const del = document.createElement("button");
     del.className = "mini-btn mini-danger";
-    del.textContent = "✕";
+    del.textContent = t("workshop.delete");
     del.addEventListener("click", () => {
       const next = getWorkshopSaved().filter((x) => x.id !== item.id);
       setWorkshopSaved(next);
@@ -329,13 +650,13 @@ function saveWorkshopFromInput() {
   const name = wname.value.trim();
 
   if (!/^[0-9]{6,}$/.test(id)) {
-    appendOut("> Hinweis: Workshop ID muss numerisch sein.\n");
+    appendOut("> " + t("workshop.invalidId") + "\n");
     return;
   }
 
   const list = getWorkshopSaved();
   if (list.some((x) => x.id === id)) {
-    appendOut("> Workshop ID ist schon gespeichert.\n");
+    appendOut("> " + t("workshop.duplicateId") + "\n");
     renderWorkshopSaved();
     clearInputs(["workshopId", "workshopName"]);
     return;
@@ -344,7 +665,7 @@ function saveWorkshopFromInput() {
   list.unshift({ id, name });
   setWorkshopSaved(list.slice(0, 64));
   renderWorkshopSaved();
-  appendOut("> Workshop gespeichert: " + id + (name ? " (" + name + ")" : "") + "\n");
+  appendOut("> " + t("workshop.saved") + " " + id + (name ? " (" + name + ")" : "") + "\n");
 
   clearInputs(["workshopId", "workshopName"]);
 }
@@ -352,7 +673,7 @@ function saveWorkshopFromInput() {
 function clearWorkshopSaved() {
   setWorkshopSaved([]);
   renderWorkshopSaved();
-  appendOut("> Workshop Favoriten gelöscht.\n");
+  appendOut("> " + t("workshop.cleared") + "\n");
 }
 
 /* ===== Players ===== */
@@ -419,49 +740,67 @@ function renderPlayers() {
   const pageItems = filtered.slice(start, start + PAGE_SIZE);
 
   const maxText = playersMax && playersMax > 0 ? ` / ${playersMax}` : "";
-  countEl.textContent = `${playersCache.length}${maxText} online`;
+  countEl.textContent = `${playersCache.length}${maxText} ${t("players.online")}`;
 
   listEl.innerHTML = "";
 
-  if (!pageItems.length) {
-    const empty = document.createElement("div");
-    empty.className = "muted";
-    empty.textContent = playersCache.length ? "Keine Treffer." : "Keine Spieler online.";
-    listEl.appendChild(empty);
+  const table = document.createElement("table");
+  table.className = "players-table";
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>${t("players.tableName")}</th>
+        <th>${t("players.tableUserId")}</th>
+        <th>${t("players.tableSteam")}</th>
+        <th>${t("players.tableAction")}</th>
+      </tr>
+    </thead>
+  `;
+  const tbody = document.createElement("tbody");
+
+  if (playersLoading) {
+    const row = document.createElement("tr");
+    row.className = "players-empty-row players-loading-row";
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.textContent = t("players.loading");
+    row.appendChild(cell);
+    tbody.appendChild(row);
+  } else if (!pageItems.length) {
+    const row = document.createElement("tr");
+    row.className = "players-empty-row";
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.textContent = playersCache.length ? t("players.noMatch") : t("players.empty");
+    row.appendChild(cell);
+    tbody.appendChild(row);
   } else {
     for (const p of pageItems) {
-      const row = document.createElement("div");
-      row.className = "player-row";
+      const row = document.createElement("tr");
 
-      const left = document.createElement("div");
-      left.className = "player-left";
-
+      const nameCell = document.createElement("td");
+      const playerIdentity = document.createElement("div");
+      playerIdentity.className = "player-identity";
       const av = document.createElement("div");
       av.className = "avatar";
-
-      const meta = document.createElement("div");
-      meta.className = "player-meta";
-
       const name = document.createElement("div");
       name.className = "player-name";
-      name.textContent = p.name || "(unknown)";
+      name.textContent = p.name || `(${t("players.unknown")})`;
+      playerIdentity.appendChild(av);
+      playerIdentity.appendChild(name);
+      nameCell.appendChild(playerIdentity);
 
-      const sub = document.createElement("div");
-      sub.className = "player-sub";
-      sub.textContent = `userid: ${p.userid}` + (p.steam64 ? ` • steam64: ${p.steam64}` : "");
+      const useridCell = document.createElement("td");
+      useridCell.textContent = String(p.userid ?? "-");
 
-      meta.appendChild(name);
-      meta.appendChild(sub);
+      const steamCell = document.createElement("td");
+      steamCell.className = "mono-cell";
+      steamCell.textContent = p.steam64 || "-";
 
-      left.appendChild(av);
-      left.appendChild(meta);
-
-      const actions = document.createElement("div");
-      actions.className = "player-actions";
-
+      const actionCell = document.createElement("td");
       const kickBtn = document.createElement("button");
       kickBtn.className = "mini-btn mini-danger";
-      kickBtn.textContent = "Kick";
+      kickBtn.textContent = t("players.kick");
       kickBtn.addEventListener("click", async () => {
         const reasonEl = $("kickReason");
         const reason = reasonEl?.value?.trim() || "";
@@ -477,36 +816,45 @@ function renderPlayers() {
         clearInputs(["kickReason"]);
         await loadPlayers().catch(() => {});
       });
+      actionCell.appendChild(kickBtn);
 
-      actions.appendChild(kickBtn);
-
-      row.appendChild(left);
-      row.appendChild(actions);
-      listEl.appendChild(row);
+      row.appendChild(nameCell);
+      row.appendChild(useridCell);
+      row.appendChild(steamCell);
+      row.appendChild(actionCell);
+      tbody.appendChild(row);
     }
   }
 
+  table.appendChild(tbody);
+  const tableWrap = document.createElement("div");
+  tableWrap.className = "players-table-wrap";
+  tableWrap.appendChild(table);
+  listEl.appendChild(tableWrap);
+
   const pager = document.createElement("div");
-  pager.className = "row";
-  pager.style.justifyContent = "space-between";
-  pager.style.marginTop = "10px";
+  pager.className = "players-pager";
 
   const leftPager = document.createElement("div");
-  leftPager.className = "row";
+  leftPager.className = "players-pager-actions";
 
   const prev = document.createElement("button");
-  prev.className = "btn";
-  prev.textContent = "◀ Prev";
-  prev.disabled = playersPage <= 1;
+  prev.className = "btn players-page-btn";
+  prev.textContent = "<";
+  prev.title = t("players.prev");
+  prev.setAttribute("aria-label", t("players.prev"));
+  prev.disabled = playersPage <= 1 || totalPages <= 1;
   prev.addEventListener("click", () => {
     playersPage--;
     renderPlayers();
   });
 
   const next = document.createElement("button");
-  next.className = "btn";
-  next.textContent = "Next ▶";
-  next.disabled = playersPage >= totalPages;
+  next.className = "btn players-page-btn";
+  next.textContent = ">";
+  next.title = t("players.next");
+  next.setAttribute("aria-label", t("players.next"));
+  next.disabled = playersPage >= totalPages || totalPages <= 1;
   next.addEventListener("click", () => {
     playersPage++;
     renderPlayers();
@@ -514,26 +862,36 @@ function renderPlayers() {
 
   const info = document.createElement("span");
   info.className = "badge";
-  info.textContent = `Page ${playersPage} / ${totalPages}`;
+  info.textContent = t("players.page", { page: playersPage, total: totalPages });
 
-  leftPager.appendChild(prev);
-  leftPager.appendChild(next);
+  if (totalPages > 1) {
+    leftPager.appendChild(prev);
+    leftPager.appendChild(next);
+    pager.appendChild(leftPager);
+  }
 
-  pager.appendChild(leftPager);
   pager.appendChild(info);
   listEl.appendChild(pager);
 }
 
 async function loadPlayers() {
-  const res = await fetch("/api/players");
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "failed");
+  const hadRows = playersCache.length > 0;
+  playersLoading = true;
+  if (!hadRows) renderPlayers();
 
-  playersCache = parsePlayersRaw(data.raw || "");
-  mergeSteamIntoPlayers();
+  try {
+    const res = await fetch("/api/players");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "failed");
 
-  await refreshServerStatusIfNeeded();
-  renderPlayers();
+    playersCache = parsePlayersRaw(data.raw || "");
+    mergeSteamIntoPlayers();
+
+    await refreshServerStatusIfNeeded();
+  } finally {
+    playersLoading = false;
+    renderPlayers();
+  }
 }
 
 function startPlayersAutoSync() {
@@ -566,7 +924,7 @@ async function sendCmd() {
   const r = await api("/api/command", { command });
   appendOut("> " + command + "\n" + (r.out || "OK"));
 
-  // autocomplete schließen + input leeren
+  // autocomplete schlie闁煎绂峮 + input leeren
   const ac = $("ac");
   if (ac) ac.style.display = "none";
   clearInputs(["cmd"]);
@@ -596,7 +954,7 @@ async function loadMaps() {
 
     const sub = document.createElement("div");
     sub.className = "map-sub";
-    sub.textContent = "Standard Map";
+    sub.textContent = t("map.standard");
 
     meta.appendChild(name);
     meta.appendChild(sub);
@@ -658,6 +1016,89 @@ function addLogLine(line) {
   const lines = box.textContent.split("\n");
   if (lines.length > 900) box.textContent = lines.slice(lines.length - 900).join("\n");
   box.scrollTop = box.scrollHeight;
+}
+
+function sourceLabel(source) {
+  if (source === "http") return t("logs.httpRemote");
+  if (source === "docker") return t("logs.docker");
+  if (source === "none") return t("logs.disabled");
+  return source || "-";
+}
+
+function formatAgo(ts) {
+  if (!ts) return "-";
+  const diff = Math.max(0, Date.now() - Number(ts));
+  const sec = Math.floor(diff / 1000);
+  if (sec < 5) return t("logs.justNow");
+  if (sec < 60) return t("logs.secondsAgo", { n: sec });
+  const min = Math.floor(sec / 60);
+  if (min < 60) return t("logs.minutesAgo", { n: min });
+  const hour = Math.floor(min / 60);
+  return t("logs.hoursAgo", { n: hour });
+}
+
+function setText(id, value) {
+  const el = $(id);
+  if (el) el.textContent = value;
+}
+
+function receiveStateFromStatus(status) {
+  const mode = status?.sourceMode || latestLogStatus?.source || "";
+  if (mode === "none") return "OFFLINE";
+  if (status?.lastReceivedAt) return "LIVE";
+  return "WAITING";
+}
+
+function renderLogStatus(payload) {
+  if (!payload) return;
+  latestLogStatus = payload;
+  const stats = payload.stats || payload;
+  const source = payload.source || stats.sourceMode;
+  const state = receiveStateFromStatus(stats);
+
+  setText("logSourceText", sourceLabel(source));
+  setText("logReceiveState", state);
+  setText("logLastReceived", formatAgo(stats.lastReceivedAt));
+  setText("logClientCount", String(stats.clientCount ?? 0));
+  setText("logTotalLines", String(stats.totalLines ?? 0));
+  setText("logPublicUrl", payload.receiver?.publicUrlMasked || "-");
+
+  if (source === "none") setLogBadge("offline");
+  else if (state === "LIVE") setLogBadge("live");
+  else setLogBadge("reconnecting");
+}
+
+function handleLogItem(item) {
+  const line = typeof item === "string" ? item : item?.line || "";
+  if (!line) return;
+
+  const hit = parseSteamValidatedLine(line);
+  if (hit) {
+    if (Number.isFinite(hit.userid)) steamByUserId.set(hit.userid, hit.steam64);
+    if (hit.name) steamByName.set(String(hit.name).toLowerCase(), hit.steam64);
+
+    mergeSteamIntoPlayers();
+    renderPlayers();
+  }
+
+  addLogLine(line);
+}
+
+async function loadLogStatus() {
+  const data = await apiGet("/api/logs/status");
+  renderLogStatus(data);
+  return data;
+}
+
+async function postLogAction(path, label) {
+  const data = await api(path, {});
+  appendOut(`> ${label}\n` + JSON.stringify(data, null, 2));
+  await loadLogStatus().catch(() => {});
+}
+
+async function logout() {
+  await fetch("/logout", { method: "POST" }).catch(() => {});
+  window.location.href = "/login";
 }
 
 /* ===== Log badge + RCON toggle UI wiring (no HTML changes needed) ===== */
@@ -787,41 +1228,18 @@ function setLogBadge(state) {
   const b = $("logBadge");
   if (!b) return;
 
-  // Text + Punkt INSIDE badge
-  let text = "STREAM";
-  if (state === "live") text = "LIVE";
-  else if (state === "reconnecting") text = "RECONNECTING…";
-  else if (state === "offline") text = "OFFLINE";
-  else text = String(state || "STREAM");
+  const text = state === "live" ? "LIVE" : state === "offline" ? "OFFLINE" : "WAITING";
+  const color =
+    state === "live" ? "rgba(34,197,94,0.95)" :
+    state === "offline" ? "rgba(239,68,68,0.95)" :
+    "rgba(245,158,11,0.95)";
 
-  // Punkt element (nur 1!)
-  const dotHtml = `<span class="log-dot" style="
-    width:10px;height:10px;border-radius:999px;
-    display:inline-block;
-    background:${state === "live" ? "rgba(34,197,94,0.95)" : state === "reconnecting" ? "rgba(245,158,11,0.95)" : "rgba(239,68,68,0.95)"};
-    box-shadow:${state === "live" ? "0 0 0 6px rgba(34,197,94,0.14)" : "none"};
-  "></span>`;
-
-  b.innerHTML = `${text}${dotHtml}`;
-
-  // Farben grob (passt zu deinem Dark UI)
-  b.style.borderColor = "";
-  b.style.color = "";
-  b.style.opacity = "1";
-
-  if (state === "live") {
-    b.style.borderColor = "rgba(34,197,94,.35)";
-    b.style.color = "rgba(34,197,94,.95)";
-  } else if (state === "reconnecting") {
-    b.style.borderColor = "rgba(245,158,11,.35)";
-    b.style.color = "rgba(245,158,11,.95)";
-  } else if (state === "offline") {
-    b.style.borderColor = "rgba(239,68,68,.35)";
-    b.style.color = "rgba(239,68,68,.95)";
-    b.style.opacity = ".9";
-  }
-
-  // pulse togglen (falls du eine .pulse CSS animation hast)
+  b.innerHTML = `${text}<span class="log-dot" style="width:10px;height:10px;border-radius:999px;display:inline-block;background:${color};"></span>`;
+  b.style.display = "inline-flex";
+  b.style.alignItems = "center";
+  b.style.gap = "8px";
+  b.style.borderColor = color;
+  b.style.color = color;
   b.classList.toggle("pulse", state === "live");
 }
 
@@ -835,32 +1253,28 @@ function startLogs() {
   } catch (e) {
     logEventSource = null;
     setLogBadge("offline");
-    softErr("Live Logs konnten nicht gestartet werden (EventSource).", e);
+    softErr(t("logs.eventSourceError"), e);
     return;
   }
 
   logEventSource.onopen = () => {
-    setLogBadge("live");
+    setLogBadge("reconnecting");
+    loadLogStatus().catch(() => {});
   };
 
   logEventSource.onmessage = (e) => {
-    const line = e.data || "";
-
-    // Steam parsing IMMER
-    const hit = parseSteamValidatedLine(line);
-    if (hit) {
-      if (Number.isFinite(hit.userid)) steamByUserId.set(hit.userid, hit.steam64);
-      if (hit.name) steamByName.set(String(hit.name).toLowerCase(), hit.steam64);
-
-      mergeSteamIntoPlayers();
-      renderPlayers();
-    }
-
-    // Log line ggf. anzeigen
-    addLogLine(line);
-
-    setLogBadge("live");
+    handleLogItem(e.data || "");
   };
+
+  logEventSource.addEventListener("log", (e) => {
+    const item = JSON.parse(e.data || "{}");
+    handleLogItem(item);
+  });
+
+  logEventSource.addEventListener("status", (e) => {
+    const stats = JSON.parse(e.data || "{}");
+    renderLogStatus({ ...(latestLogStatus || {}), source: stats.sourceMode, stats });
+  });
 
   logEventSource.onerror = () => {
     setLogBadge("reconnecting");
@@ -904,19 +1318,27 @@ window.addEventListener("pagehide", closeStreams);
 /* ===== Bindings ===== */
 function bindUI() {
   on("themeToggle", "click", toggleTheme);
+  on("localeSelect", "change", (e) => setLocale(e.target.value));
+  document.querySelectorAll(".locale-option").forEach((btn) => {
+    btn.addEventListener("click", () => setLocale(btn.dataset.locale));
+  });
+  on("logoutBtn", "click", () => logout());
 
-  on("cvarSet", "click", () => setCvar().catch((e) => softErr("cvar error", e)));
+  on("cvarSet", "click", () => setCvar().catch((e) => softErr(t("errors.cvar"), e)));
   document.querySelectorAll(".pill").forEach((btn) => {
+    const commandPreview = `${btn.dataset.cvar || ""} ${btn.dataset.val || ""}`.trim();
+    btn.dataset.command = commandPreview;
+    btn.title = commandPreview;
     btn.addEventListener("click", () => {
       const n = $("cvarName"), v = $("cvarValue");
       if (!n || !v) return;
       n.value = btn.dataset.cvar || "";
       v.value = btn.dataset.val || "";
-      setCvar().catch((e) => softErr("cvar error", e));
+      setCvar().catch((e) => softErr(t("errors.cvar"), e));
     });
   });
 
-  on("wsStart", "click", () => workshopStart().catch((e) => softErr("ws error", e)));
+  on("wsStart", "click", () => workshopStart().catch((e) => softErr(t("errors.workshop"), e)));
   on("wsSave", "click", () => { saveWorkshopFromInput(); });
   on("wsClear", "click", clearWorkshopSaved);
 
@@ -926,7 +1348,7 @@ function bindUI() {
     renderPlayers();
   });
 
-  on("cmdSend", "click", () => sendCmd().catch((e) => softErr("cmd error", e)));
+  on("cmdSend", "click", () => sendCmd().catch((e) => softErr(t("errors.command"), e)));
   on("cmd", "keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -946,25 +1368,31 @@ function bindUI() {
   });
 
   on("logClear", "click", clearLogs);
+  on("logRegisterHttp", "click", () => postLogAction("/api/logs/register-http", t("logs.registerAction")).catch((e) => softErr(t("errors.registerLog"), e)));
+  on("logUnregisterHttp", "click", () => postLogAction("/api/logs/unregister-http", t("logs.unregisterAction")).catch((e) => softErr(t("errors.unregisterLog"), e)));
+  on("logTest", "click", () => postLogAction("/api/logs/test", t("logs.testAction")).catch((e) => softErr(t("errors.testLog"), e)));
+  on("logRefreshStatus", "click", () => loadLogStatus().catch((e) => softErr(t("errors.logStatus"), e)));
 }
 
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    applyI18n();
     initTheme();
     bindUI();
     renderWorkshopSaved();
 
-    loadMaps().catch((e) => softErr("maps error", e));
+    loadMaps().catch((e) => softErr(t("errors.maps"), e));
     loadPlayers().catch(() => {});
     startPlayersAutoSync();
 
     // Badge + Toggle bauen + Logs autostarten
     ensureLogBadgeAndControls();
+    loadLogStatus().catch(() => {});
     startLogs();
 
-    appendOut("> CS2Ops ready ✅");
+    appendOut("> " + t("console.ready"));
   } catch (e) {
-    softErr("Init crashed (check missing IDs in index.html).", e);
+    softErr(t("errors.init"), e);
   }
 });
