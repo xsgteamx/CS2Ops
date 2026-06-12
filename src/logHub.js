@@ -5,6 +5,7 @@ export class LogHub {
     this.lines = [];
     this.clients = new Set();
     this.totalLines = 0;
+    this.nextSeq = 1;
     this.lastReceivedAt = null;
     this.heartbeat = setInterval(() => this.sendHeartbeat(), 15000);
     this.heartbeat.unref?.();
@@ -15,6 +16,7 @@ export class LogHub {
     if (!cleanLine) return null;
 
     const item = {
+      seq: this.nextSeq++,
       ts: Date.now(),
       line: cleanLine,
       source: meta.source || this.sourceMode || 'system',
@@ -37,6 +39,17 @@ export class LogHub {
     return [...this.lines];
   }
 
+  getLinesAfter(seq = 0) {
+    const cursor = Number(seq || 0);
+    return this.lines.filter((line) => Number(line.seq || 0) > cursor);
+  }
+
+  clear() {
+    this.lines = [];
+    this.lastReceivedAt = null;
+    this.broadcast('status', this.getStatus());
+  }
+
   subscribe(res) {
     this.clients.add(res);
 
@@ -54,6 +67,7 @@ export class LogHub {
     return {
       sourceMode: this.sourceMode,
       totalLines: this.totalLines,
+      maxSeq: this.nextSeq - 1,
       lastReceivedAt: this.lastReceivedAt,
       clientCount: this.clients.size,
       recentLines: this.lines.length,

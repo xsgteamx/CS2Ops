@@ -4,8 +4,8 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>CS2Ops</title>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -48,6 +48,22 @@
               <button class="pill" data-cvar="mp_maxrounds" data-val="24">MR12 <span>mp_maxrounds</span></button>
               <button class="pill" data-cvar="mp_overtime_enable" data-val="1">开启加时 <span>mp_overtime_enable</span></button>
               <button class="pill" data-cvar="mp_restartgame" data-val="1">重开 1s <span>mp_restartgame</span></button>
+              <button class="pill" data-cvar="mp_pause_match" data-val="1">暂停比赛 <span>mp_pause_match</span></button>
+              <button class="pill" data-cvar="mp_unpause_match" data-val="1">继续比赛 <span>mp_unpause_match</span></button>
+              <button class="pill" data-cvar="mp_halftime" data-val="1">开启半场 <span>mp_halftime</span></button>
+              <button class="pill" data-cvar="mp_match_can_clinch" data-val="1">允许提前结束 <span>mp_match_can_clinch</span></button>
+            </div>
+          </div>
+
+          <div class="preset-group">
+            <div class="preset-title" data-i18n="cvar.modePresets">模式</div>
+            <div class="pillbar">
+              <button class="pill" data-preset-key="mode:competitive" data-command="game_type 0; game_mode 1">竞技 <span>game_type/game_mode</span></button>
+              <button class="pill" data-preset-key="mode:casual" data-command="game_type 0; game_mode 0">休闲 <span>game_type/game_mode</span></button>
+              <button class="pill" data-preset-key="mode:wingman" data-command="game_type 0; game_mode 2">搭档 <span>game_type/game_mode</span></button>
+              <button class="pill" data-preset-key="mode:deathmatch" data-command="game_type 1; game_mode 2">死亡竞赛 <span>game_type/game_mode</span></button>
+              <button class="pill" data-preset-key="mode:armsrace" data-command="game_type 1; game_mode 0">军备竞赛 <span>game_type/game_mode</span></button>
+              <button class="pill" data-preset-key="mode:custom" data-command="game_type 3; game_mode 0">自定义 <span>game_type/game_mode</span></button>
             </div>
           </div>
 
@@ -60,6 +76,10 @@
               <button class="pill" data-cvar="mp_afterroundmoney" data-val="16000">每回合补满 <span>mp_afterroundmoney</span></button>
               <button class="pill" data-cvar="mp_buytime" data-val="9999">长买枪时间 <span>mp_buytime</span></button>
               <button class="pill" data-cvar="mp_buy_anywhere" data-val="1">任意地点买枪 <span>mp_buy_anywhere</span></button>
+              <button class="pill" data-cvar="mp_buy_anywhere" data-val="0">仅购买区买枪 <span>mp_buy_anywhere</span></button>
+              <button class="pill" data-cvar="mp_free_armor" data-val="1">免费护甲 <span>mp_free_armor</span></button>
+              <button class="pill" data-cvar="mp_free_armor" data-val="0">关闭免费护甲 <span>mp_free_armor</span></button>
+              <button class="pill" data-cvar="mp_weapons_allow_map_placed" data-val="1">允许地图武器 <span>mp_weapons_allow_map_placed</span></button>
             </div>
           </div>
 
@@ -72,6 +92,12 @@
               <button class="pill" data-cvar="sv_grenade_trajectory_prac_pipreview" data-val="1">投掷预览 <span>grenade preview</span></button>
               <button class="pill" data-cvar="mp_warmup_end" data-val="1">结束热身 <span>mp_warmup_end</span></button>
               <button class="pill" data-cvar="bot_quota" data-val="0">清空 Bot <span>bot_quota</span></button>
+              <button class="pill" data-cvar="bot_quota" data-val="5">添加 5 个 Bot <span>bot_quota</span></button>
+              <button class="pill" data-cvar="bot_kick" data-val="">踢出 Bot <span>bot_kick</span></button>
+              <button class="pill" data-cvar="bot_stop" data-val="1">冻结 Bot <span>bot_stop</span></button>
+              <button class="pill" data-cvar="bot_stop" data-val="0">恢复 Bot <span>bot_stop</span></button>
+              <button class="pill" data-cvar="mp_limitteams" data-val="0">关闭队伍限制 <span>mp_limitteams</span></button>
+              <button class="pill" data-cvar="mp_autoteambalance" data-val="0">关闭自动平衡 <span>mp_autoteambalance</span></button>
             </div>
           </div>
         </div>
@@ -115,7 +141,13 @@
       </div>
 
       <div class="card span-2 console-card">
-        <h2><span data-i18n="console.title">Console</span> <span class="badge">RCON</span></h2>
+        <h2>
+          <span data-i18n="console.title">Console</span>
+          <span class="console-title-actions">
+            <button class="mini-btn" id="rconClear" type="button" data-i18n="common.clear">Clear</button>
+            <span class="badge">RCON</span>
+          </span>
+        </h2>
 
         <div class="row console-row">
           <div class="console-input-wrap">
@@ -155,6 +187,6 @@
     </div>
   </div>
 
-  <script src="/app.js" defer></script>
+  <script src="app.js" defer></script>
 </body>
 </html>

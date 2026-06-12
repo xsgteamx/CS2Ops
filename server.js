@@ -13,13 +13,15 @@ import { LogHub } from './src/logHub.js';
 import { startDockerLogSource } from './src/logSources/dockerLogSource.js';
 import { getHttpLogConfig, startHttpLogSource } from './src/logSources/httpLogSource.js';
 import { boolFromEnv, maskSecretInText, maskUrlSecret } from './src/logSecurity.js';
-import { SteamIdTracker } from './src/steamIdTracker.js';
+import { SteamIdTracker, accountIdToSteam64, normalizeTeam } from './src/steamIdTracker.js';
 
 const DOCKER_CONTAINER = process.env.DOCKER_CONTAINER || 'cs2-dedicated';
 const LOG_LINES = Number(process.env.LOG_LINES || 200);
 const LOG_SOURCE = String(process.env.LOG_SOURCE || 'docker').toLowerCase();
 const LOG_TTL_MS = Number(process.env.LOG_TTL_MS || (60 * 60 * 1000));
 const LOG_HTTP_RCON_REGISTER = boolFromEnv(process.env.LOG_HTTP_RCON_REGISTER, true);
+const STEAM_WEB_API_KEY = String(process.env.STEAM_WEB_API_KEY || '').trim();
+const STEAM_AVATAR_TTL_MS = Number(process.env.STEAM_AVATAR_TTL_MS || (12 * 60 * 60 * 1000));
 const httpLogConfig = getHttpLogConfig(process.env);
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,6 +37,11 @@ app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 const PANEL_RATE_LIMIT_WINDOW_MS = Number(process.env.PANEL_RATE_LIMIT_WINDOW_MS || (15 * 60 * 1000));
 const PANEL_RATE_LIMIT_MAX = Number(process.env.PANEL_RATE_LIMIT_MAX || 3000);
+const LOGIN_CAPTCHA_ENABLED = boolFromEnv(process.env.LOGIN_CAPTCHA_ENABLED, true);
+const LOGIN_CAPTCHA_AFTER_FAILURES = Number(process.env.LOGIN_CAPTCHA_AFTER_FAILURES || 2);
+const LOGIN_CAPTCHA_TTL_MS = Number(process.env.LOGIN_CAPTCHA_TTL_MS || (5 * 60 * 1000));
+const LOGIN_LOCK_AFTER_FAILURES = Number(process.env.LOGIN_LOCK_AFTER_FAILURES || 10);
+const LOGIN_LOCK_TTL_MS = Number(process.env.LOGIN_LOCK_TTL_MS || (5 * 60 * 1000));
 app.use(rateLimit({
   windowMs: PANEL_RATE_LIMIT_WINDOW_MS,
   limit: PANEL_RATE_LIMIT_MAX,
@@ -56,6 +63,19 @@ const PANEL_SESSION_SECRET = process.env.PANEL_SESSION_SECRET || crypto
   .createHash('sha256')
   .update(`${PANEL_USER}:${PANEL_PASS}:cs2ops-session`)
   .digest('hex');
+const PANEL_BASE_PATH = normalizeBasePath(process.env.PANEL_BASE_PATH || '');
+const loginAttempts = new Map();
+
+function normalizeBasePath(value) {
+  const raw = String(value || '').trim();
+  if (!raw || raw === '/') return '';
+  return `/${raw.replace(/^\/+|\/+$/g, '')}`;
+}
+
+function panelUrl(pathname = '/') {
+  const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  return `${PANEL_BASE_PATH}${normalized}`;
+}
 
 function parseCookies(header = '') {
   const out = {};
@@ -97,6 +117,57 @@ function acceptsHtml(req) {
   return String(req.headers.accept || '').includes('text/html');
 }
 
+function loginKey(req, user) {
+  const ip = String(req.ip || req.socket?.remoteAddress || 'unknown');
+  const normalizedUser = String(user || '').trim().toLowerCase();
+  return `${ip}:${normalizedUser}`;
+}
+
+function getLoginAttempt(key) {
+  const now = Date.now();
+  const entry = loginAttempts.get(key) || { failures: 0, lockedUntil: 0, captcha: null };
+  if (entry.lockedUntil && entry.lockedUntil <= now) {
+    entry.lockedUntil = 0;
+    entry.failures = 0;
+  }
+  if (entry.captcha?.expiresAt <= now) entry.captcha = null;
+  loginAttempts.set(key, entry);
+  return entry;
+}
+
+function captchaRequired(entry) {
+  return LOGIN_CAPTCHA_ENABLED && entry.failures >= LOGIN_CAPTCHA_AFTER_FAILURES;
+}
+
+function createCaptcha(entry) {
+  const a = crypto.randomInt(2, 10);
+  const b = crypto.randomInt(2, 10);
+  entry.captcha = {
+    answer: String(a + b),
+    text: `${a} + ${b} = ?`,
+    expiresAt: Date.now() + LOGIN_CAPTCHA_TTL_MS,
+  };
+  return entry.captcha;
+}
+
+function recordLoginFailure(key) {
+  const entry = getLoginAttempt(key);
+  entry.failures += 1;
+  entry.captcha = null;
+  if (LOGIN_LOCK_AFTER_FAILURES > 0 && entry.failures >= LOGIN_LOCK_AFTER_FAILURES) {
+    entry.lockedUntil = Date.now() + LOGIN_LOCK_TTL_MS;
+  }
+  loginAttempts.set(key, entry);
+}
+
+function clearLoginFailures(key) {
+  loginAttempts.delete(key);
+}
+
+function loginFail(res) {
+  return res.redirect(panelUrl('/login?login=failed'));
+}
+
 function basicAuth(req, res, next) {
   const cookies = parseCookies(req.headers.cookie || '');
   if (verifySessionToken(cookies.cs2ops_session)) return next();
@@ -104,7 +175,7 @@ function basicAuth(req, res, next) {
   const h = req.headers.authorization || '';
   if (!h.startsWith('Basic ')) {
     if (acceptsHtml(req) && !req.path.startsWith('/api/')) {
-      return res.redirect('/login');
+      return res.redirect(panelUrl('/login'));
     }
     res.setHeader('WWW-Authenticate', 'Basic realm="CS2 RCON Panel"');
     return res.status(401).format({
@@ -126,22 +197,72 @@ function basicAuth(req, res, next) {
 
 app.get('/login', (req, res) => {
   const cookies = parseCookies(req.headers.cookie || '');
-  if (verifySessionToken(cookies.cs2ops_session)) return res.redirect('/');
+  if (verifySessionToken(cookies.cs2ops_session)) return res.redirect(panelUrl('/'));
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+app.get('/login/captcha-status', (req, res) => {
+  const key = loginKey(req, req.query.user);
+  const entry = getLoginAttempt(key);
+  res.json({
+    ok: true,
+    required: captchaRequired(entry),
+    locked: Boolean(entry.lockedUntil && entry.lockedUntil > Date.now()),
+  });
+});
+
+app.get('/login/captcha', (req, res) => {
+  const key = loginKey(req, req.query.user);
+  const entry = getLoginAttempt(key);
+  if (!captchaRequired(entry)) return res.status(404).send('Not required');
+  const captcha = createCaptcha(entry);
+  const noise = Array.from({ length: 4 }, () => {
+    const x1 = crypto.randomInt(10, 160);
+    const y1 = crypto.randomInt(10, 52);
+    const x2 = crypto.randomInt(10, 160);
+    const y2 = crypto.randomInt(10, 52);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(148,163,184,.35)" stroke-width="1"/>`;
+  }).join('');
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="170" height="62" viewBox="0 0 170 62" role="img" aria-label="captcha">
+  <rect width="170" height="62" rx="14" fill="#0b1220"/>
+  <path d="M10 44 C42 18, 62 52, 95 24 S135 46, 160 18" fill="none" stroke="rgba(96,165,250,.35)" stroke-width="2"/>
+  ${noise}
+  <text x="85" y="39" text-anchor="middle" fill="#edf5ff" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="24" font-weight="800" letter-spacing="2">${captcha.text}</text>
+</svg>`;
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(svg);
+});
+
 app.post('/login', (req, res) => {
-  const { user, pass } = req.body || {};
-  if (user !== PANEL_USER || !bcrypt.compareSync(String(pass || ''), PANEL_PASS_HASH)) {
-    return res.status(401).sendFile(path.join(__dirname, 'public', 'login.html'));
+  const { user, pass, captcha } = req.body || {};
+  const key = loginKey(req, user);
+  const entry = getLoginAttempt(key);
+  if (entry.lockedUntil && entry.lockedUntil > Date.now()) return loginFail(res);
+
+  if (captchaRequired(entry)) {
+    const expected = String(entry.captcha?.answer || '');
+    const supplied = String(captcha || '').trim();
+    const validCaptcha = expected && supplied && expected === supplied;
+    if (!validCaptcha) {
+      recordLoginFailure(key);
+      return loginFail(res);
+    }
   }
+
+  if (user !== PANEL_USER || !bcrypt.compareSync(String(pass || ''), PANEL_PASS_HASH)) {
+    recordLoginFailure(key);
+    return loginFail(res);
+  }
+  clearLoginFailures(key);
   const token = createSessionToken(PANEL_USER);
   const secure = req.secure || String(req.headers['x-forwarded-proto'] || '').includes('https');
   res.setHeader(
     'Set-Cookie',
     `cs2ops_session=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${Math.floor(PANEL_SESSION_TTL_MS / 1000)}${secure ? '; Secure' : ''}`
   );
-  res.redirect('/');
+  res.redirect(panelUrl('/'));
 });
 
 app.post('/logout', basicAuth, (req, res) => {
@@ -154,6 +275,7 @@ app.post('/logout', basicAuth, (req, res) => {
 // ================================
 const logHub = new LogHub({ maxLines: LOG_LINES, sourceMode: LOG_SOURCE });
 const steamTracker = new SteamIdTracker({ ttlMs: LOG_TTL_MS });
+let httpLogSourceController = null;
 
 setInterval(() => steamTracker.cleanup(), 30_000).unref();
 
@@ -167,11 +289,12 @@ if (LOG_SOURCE === 'docker') {
 } else if (LOG_SOURCE === 'none') {
   logHub.push('Live logs disabled', { source: 'system' });
 } else if (LOG_SOURCE === 'http') {
-  startHttpLogSource({
+  httpLogSourceController = startHttpLogSource({
     config: httpLogConfig,
     logHub,
     steamTracker,
-  }).start();
+  });
+  httpLogSourceController.start();
 } else if (LOG_SOURCE !== 'http') {
   logHub.push(`[unknown LOG_SOURCE=${LOG_SOURCE}; live logs disabled]`, { source: 'system' });
 }
@@ -305,6 +428,14 @@ app.get('/api/logs/status', basicAuth, (req, res) => {
   res.json(getLogStatusPayload());
 });
 
+app.get('/api/logs/recent', basicAuth, (req, res) => {
+  const since = Number(req.query.since || 0);
+  res.json({
+    ...getLogStatusPayload(),
+    lines: logHub.getLinesAfter(Number.isFinite(since) ? since : 0),
+  });
+});
+
 app.post('/api/logs/register-http', basicAuth, async (req, res) => {
   if (!assertHttpRegisterAllowed(res)) return;
 
@@ -335,6 +466,11 @@ app.post('/api/logs/unregister-http', basicAuth, async (req, res) => {
 
 app.post('/api/logs/test', basicAuth, (req, res) => {
   logHub.push('[CS2Ops test] HTTP log receiver test message', { source: 'test' });
+  res.json({ ok: true, stats: logHub.getStatus() });
+});
+
+app.post('/api/logs/clear', basicAuth, (req, res) => {
+  httpLogSourceController?.resetFlowControl?.();
   res.json({ ok: true, stats: logHub.getStatus() });
 });
 
@@ -533,6 +669,9 @@ function parseUsers(text) {
         steam64: steam?.steam64 || null,
         accountid: steam?.accountid || null,
         lastSeen: steam?.lastSeen || null,
+        team: steam?.team || null,
+        isBot: false,
+        bot: false,
         raw: line,
       });
       continue;
@@ -550,6 +689,9 @@ function parseUsers(text) {
         steam64: steam?.steam64 || null,
         accountid: steam?.accountid || null,
         lastSeen: steam?.lastSeen || null,
+        team: steam?.team || null,
+        isBot: false,
+        bot: false,
         raw: line,
       });
     }
@@ -558,11 +700,164 @@ function parseUsers(text) {
   return { lines, players };
 }
 
+function steam2ToSteam64(value) {
+  const m = String(value || '').match(/^STEAM_[0-5]:([01]):(\d+)$/i);
+  if (!m) return null;
+  const accountid = BigInt(m[2]) * 2n + BigInt(m[1]);
+  return accountIdToSteam64(accountid);
+}
+
+function parseStatusPlayers(text) {
+  const players = [];
+  const byName = new Map();
+  const byUserid = new Map();
+  const lines = String(text || '').split('\n').map((line) => line.trim()).filter(Boolean);
+  const maxPlayers = Number(String(text || '').match(/players\s*:.*\((\d+)\s+max\)/i)?.[1] || 0) || null;
+
+  for (const line of lines) {
+    const nameMatch = line.match(/['"]([^'"]*)['"]\s*$/);
+    if (!nameMatch) continue;
+
+    const name = String(nameMatch[1] || '').trim();
+    if (!name) continue;
+
+    const beforeName = line.slice(0, nameMatch.index).trim();
+    const parts = beforeName.split(/\s+/).filter(Boolean);
+    if (!/^\d+$/.test(parts[0] || '')) continue;
+
+    const userid = Number(parts[0]);
+    const timeOrType = parts[1] || '';
+    const unique = beforeName.match(/(?:\b(BOT|STEAM_[0-5]:[01]:\d+|7656119\d{10})\b|\[U:1:(\d+)\])/i);
+    const uniqueId = unique?.[1] || (unique?.[2] ? `[U:1:${unique[2]}]` : '');
+    const team = normalizeTeam(beforeName.match(/\b(CT|TERRORIST|T|SPECTATOR|SPEC)\b/i)?.[1]);
+    const isBot = /^BOT$/i.test(timeOrType) || /\bBOT\b/i.test(uniqueId);
+    const steam64 =
+      String(uniqueId).match(/^7656119\d{10}$/)?.[0] ||
+      steam2ToSteam64(uniqueId) ||
+      (unique?.[2] ? accountIdToSteam64(unique[2]) : null);
+
+    const item = {
+      userid: Number.isFinite(userid) ? userid : null,
+      name,
+      isBot,
+      bot: isBot,
+      steam64: isBot ? null : steam64,
+      team,
+      uniqueId,
+      raw: line,
+    };
+    players.push(item);
+    byName.set(String(name).toLowerCase(), item);
+    if (Number.isFinite(item.userid)) byUserid.set(item.userid, item);
+  }
+
+  return { players, byName, byUserid, maxPlayers };
+}
+
+const steamAvatarCache = new Map();
+
+function getCachedSteamAvatar(steam64) {
+  const cached = steamAvatarCache.get(String(steam64 || ''));
+  if (!cached || cached.expiresAt <= Date.now()) return null;
+  return cached.data;
+}
+
+function setCachedSteamAvatar(steam64, data) {
+  steamAvatarCache.set(String(steam64), {
+    data,
+    expiresAt: Date.now() + STEAM_AVATAR_TTL_MS,
+  });
+}
+
+async function enrichPlayerAvatars(players) {
+  if (!STEAM_WEB_API_KEY || typeof fetch !== 'function') return players;
+
+  const steamIds = [...new Set(players
+    .filter((player) => !player.isBot && /^7656119\d{10}$/.test(String(player.steam64 || '')))
+    .map((player) => String(player.steam64)))];
+  if (!steamIds.length) return players;
+
+  const missing = steamIds.filter((steam64) => !getCachedSteamAvatar(steam64));
+  if (missing.length) {
+    const url = new URL('https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/');
+    url.searchParams.set('key', STEAM_WEB_API_KEY);
+    url.searchParams.set('steamids', missing.join(','));
+
+    try {
+      const signal =
+        typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+          ? AbortSignal.timeout(2500)
+          : undefined;
+      const response = await fetch(url, { signal });
+      const data = await response.json().catch(() => ({}));
+      const summaries = Array.isArray(data.response?.players) ? data.response.players : [];
+      for (const summary of summaries) {
+        const steam64 = String(summary.steamid || '');
+        if (!steam64) continue;
+        setCachedSteamAvatar(steam64, {
+          avatar: summary.avatarmedium || summary.avatarfull || summary.avatar || null,
+          avatarSmall: summary.avatar || null,
+          avatarMedium: summary.avatarmedium || null,
+          avatarFull: summary.avatarfull || null,
+        });
+      }
+      for (const steam64 of missing) {
+        if (!getCachedSteamAvatar(steam64)) setCachedSteamAvatar(steam64, {});
+      }
+    } catch {}
+  }
+
+  return players.map((player) => {
+    const avatar = getCachedSteamAvatar(player.steam64);
+    return avatar ? { ...player, ...avatar } : player;
+  });
+}
+
 
 app.get('/api/players', basicAuth, async (req, res) => {
   try {
     const out = await rconExec('users');
-    res.json({ ok: true, ...parseUsers(out), raw: out });
+    const parsed = parseUsers(out);
+    let status = null;
+    try {
+      status = parseStatusPlayers(await rconExec('status'));
+    } catch {}
+
+    const usersByName = new Map(parsed.players.map((player) => [String(player.name || '').toLowerCase(), player]));
+    const usersByUserid = new Map(parsed.players.map((player) => [player.userid, player]));
+
+    const statusPlayers = Array.isArray(status?.players) ? status.players : [];
+    const players = statusPlayers.length
+      ? statusPlayers.map((statusPlayer) => {
+          const userPlayer =
+            usersByUserid.get(statusPlayer.userid) ||
+            usersByName.get(String(statusPlayer.name || '').toLowerCase()) ||
+            {};
+          const steam = steamTracker.getByName(statusPlayer.name);
+          return {
+            ...userPlayer,
+            ...statusPlayer,
+            slot: userPlayer.slot ?? null,
+            steam64: statusPlayer.steam64 || userPlayer.steam64 || steam?.steam64 || null,
+            accountid: userPlayer.accountid || steam?.accountid || null,
+            lastSeen: userPlayer.lastSeen || steam?.lastSeen || null,
+            isBot: Boolean(statusPlayer.isBot),
+            bot: Boolean(statusPlayer.isBot),
+          };
+        })
+      : parsed.players.map((player) => ({
+          ...player,
+          isBot: Boolean(player.isBot),
+          bot: Boolean(player.bot),
+        }));
+
+    res.json({
+      ok: true,
+      ...parsed,
+      players: await enrichPlayerAvatars(players),
+      maxPlayers: status?.maxPlayers || null,
+      raw: out,
+    });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

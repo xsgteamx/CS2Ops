@@ -82,16 +82,6 @@
       font-size:15px;
       line-height:1.7;
     }
-    .chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
-    .chip{
-      border:1px solid var(--border);
-      border-radius:999px;
-      padding:8px 11px;
-      color:#dbeafe;
-      background:rgba(15,23,42,.32);
-      font-size:12px;
-      font-weight:800;
-    }
     .login{
       background:var(--panel);
       padding:38px;
@@ -129,6 +119,44 @@
       font-size:15px;
       box-shadow:0 14px 30px rgba(52,211,153,.18);
     }
+    .error{
+      display:none;
+      margin:0 0 16px;
+      padding:10px 12px;
+      border:1px solid rgba(251,113,133,.32);
+      border-radius:12px;
+      color:#fecdd3;
+      background:rgba(127,29,29,.22);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .captcha{
+      display:none;
+      margin-top:14px;
+    }
+    .captcha-row{
+      display:grid;
+      grid-template-columns: 170px 1fr;
+      gap:10px;
+      align-items:center;
+    }
+    .captcha img{
+      width:170px;
+      height:62px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:#0b1220;
+    }
+    .captcha-refresh{
+      width:auto;
+      margin-top:8px;
+      padding:8px 10px;
+      color:#dbeafe;
+      background:rgba(15,23,42,.48);
+      border:1px solid var(--border);
+      box-shadow:none;
+      font-size:12px;
+    }
     .hint{
       margin-top:16px;
       color:var(--muted);
@@ -140,6 +168,7 @@
       .hero{min-height:auto;padding:28px}
       h1{font-size:32px}
       .login{padding:28px}
+      .captcha-row{grid-template-columns:1fr}
     }
   </style>
 </head>
@@ -148,28 +177,85 @@
     <section class="hero">
       <div class="brand"><div class="mark"></div><span>CS2Ops</span></div>
       <div>
-        <h1>轻量 CS2 RCON 管理后台</h1>
-        <p>保留 RCON 管理能力，支持 Docker 本机日志、HTTP 远程日志和禁用日志三种模式。适合把面板部署在 VPS，CS2 服务器放在局域网或微服里的场景。</p>
-        <div class="chips">
-          <span class="chip">RCON 控制</span>
-          <span class="chip">HTTP Remote Log</span>
-          <span class="chip">中文界面</span>
-        </div>
+        <h1>CS2Ops 控制台</h1>
+        <p>登录后管理服务器控制台、地图、玩家和实时日志。</p>
       </div>
-      <p>登录后进入控制台。凭据只在后端校验，不会暴露 RCON 密码或 HTTP log secret。</p>
+      <p>仅限授权用户访问。</p>
     </section>
     <section class="login">
       <h2>登录面板</h2>
-      <p class="sub">请输入面板账号密码。</p>
-      <form method="post" action="/login">
+      <p class="sub">请输入账号和密码。</p>
+      <div class="error" id="loginError">账号或密码不正确。</div>
+      <form method="post" action="login">
         <label for="user">用户名</label>
         <input id="user" name="user" autocomplete="username" autofocus>
         <label for="pass">密码</label>
         <input id="pass" name="pass" type="password" autocomplete="current-password">
+        <div class="captcha" id="captchaBox">
+          <label for="captcha">验证码</label>
+          <div class="captcha-row">
+            <img id="captchaImage" alt="验证码" width="170" height="62">
+            <input id="captcha" name="captcha" inputmode="numeric" autocomplete="off" placeholder="请输入结果">
+          </div>
+          <button class="captcha-refresh" id="captchaRefresh" type="button">换一题</button>
+        </div>
         <button type="submit">进入 CS2Ops</button>
       </form>
-      <div class="hint">如果登录失败，请检查 `.env` 中的 `PANEL_USER` 和 `PANEL_PASS`。</div>
+      <div class="hint">如果无法登录，请联系管理员。</div>
     </section>
   </main>
+  <script>
+    (() => {
+      const form = document.querySelector("form");
+      const user = document.querySelector("#user");
+      const error = document.querySelector("#loginError");
+      const captchaBox = document.querySelector("#captchaBox");
+      const captchaImage = document.querySelector("#captchaImage");
+      const captchaRefresh = document.querySelector("#captchaRefresh");
+      const captchaInput = document.querySelector("#captcha");
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.get("login") === "failed") error.style.display = "block";
+
+      try {
+        const saved = sessionStorage.getItem("cs2ops_login_user");
+        if (saved && !user.value) user.value = saved;
+      } catch {}
+
+      function captchaUrl() {
+        return "login/captcha?user=" + encodeURIComponent(user.value.trim()) + "&t=" + Date.now();
+      }
+
+      async function refreshCaptchaStatus() {
+        const name = user.value.trim();
+        if (!name) {
+          captchaBox.style.display = "none";
+          captchaImage.removeAttribute("src");
+          return;
+        }
+        const res = await fetch("login/captcha-status?user=" + encodeURIComponent(name), { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (data.required) {
+          captchaBox.style.display = "block";
+          captchaImage.src = captchaUrl();
+        } else {
+          captchaBox.style.display = "none";
+          captchaImage.removeAttribute("src");
+          captchaInput.value = "";
+        }
+      }
+
+      user.addEventListener("change", refreshCaptchaStatus);
+      user.addEventListener("blur", refreshCaptchaStatus);
+      captchaRefresh.addEventListener("click", () => {
+        captchaImage.src = captchaUrl();
+        captchaInput.focus();
+      });
+      form.addEventListener("submit", () => {
+        try { sessionStorage.setItem("cs2ops_login_user", user.value.trim()); } catch {}
+      });
+      refreshCaptchaStatus().catch(() => {});
+    })();
+  </script>
 </body>
 </html>

@@ -10,6 +10,9 @@ const on = (id, ev, fn) => {
   el.addEventListener(ev, fn);
   return true;
 };
+const MAX_VISIBLE_LOG_LINES = 180;
+const HTTP_LOG_POLL_VISIBLE_MS = 1000;
+const HTTP_LOG_POLL_HIDDEN_MS = 5000;
 
 function escapeQuotes(s) {
   return String(s ?? "").replaceAll('"', '\\"');
@@ -22,6 +25,61 @@ function softErr(msg, err) {
     out.value = (out.value ? out.value + "\n" : "") + `! ${msg}`;
     out.scrollTop = out.scrollHeight;
   }
+}
+
+function toast(message) {
+  let el = $("toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "toast";
+    el.className = "toast";
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+function setupHoverPreview() {
+  let active = null;
+  let bubble = null;
+  const hide = () => {
+    active = null;
+    if (bubble) bubble.classList.remove("show");
+  };
+  const move = (event) => {
+    if (!active || !bubble) return;
+    const pad = 14;
+    const rect = bubble.getBoundingClientRect();
+    let left = event.clientX + pad;
+    let top = event.clientY + pad;
+    if (left + rect.width > window.innerWidth - 8) left = event.clientX - rect.width - pad;
+    if (top + rect.height > window.innerHeight - 8) top = event.clientY - rect.height - pad;
+    bubble.style.left = `${Math.max(8, left)}px`;
+    bubble.style.top = `${Math.max(8, top)}px`;
+  };
+  document.addEventListener("mouseover", (event) => {
+    const target = event.target.closest("[data-preview]");
+    if (!target) return;
+    const text = target.dataset.preview || "";
+    if (!text) return;
+    bubble ||= (() => {
+      const el = document.createElement("div");
+      el.className = "hover-preview";
+      document.body.appendChild(el);
+      return el;
+    })();
+    active = target;
+    bubble.textContent = text;
+    bubble.classList.add("show");
+    move(event);
+  });
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseout", (event) => {
+    if (active && !event.relatedTarget?.closest?.("[data-preview]")) hide();
+  });
+  window.addEventListener("blur", hide);
 }
 
 function formatTemplate(text, vars = {}) {
@@ -70,19 +128,98 @@ function setLocale(locale) {
   renderLogStatus(latestLogStatus);
 }
 
+function presetId(btn) {
+  return btn.dataset.presetKey || `${btn.dataset.cvar || ""}:${btn.dataset.val || ""}`;
+}
+
 function localizeCvarPresets() {
-  document.querySelectorAll(".pill[data-cvar][data-val]").forEach((btn) => {
-    const key = `${btn.dataset.cvar}:${btn.dataset.val}`;
+  document.querySelectorAll(".pill").forEach((btn) => {
+    const key = presetId(btn);
     const label =
       I18N[currentLocale]?.cvar?.presets?.[key] ||
       I18N.en?.cvar?.presets?.[key] ||
       key;
-    const command = `${btn.dataset.cvar || ""} ${btn.dataset.val || ""}`.trim();
+    const command = btn.dataset.command || `${btn.dataset.cvar || ""} ${btn.dataset.val || ""}`.trim();
     btn.replaceChildren(document.createTextNode(label), document.createElement("span"));
     const span = btn.querySelector("span");
-    if (span) span.textContent = btn.dataset.cvar || "";
+    if (span) span.textContent = btn.dataset.presetKey ? "game_type / game_mode" : (btn.dataset.cvar || "");
     btn.dataset.command = command;
-    btn.title = command;
+    btn.dataset.preview = command;
+    btn.removeAttribute("title");
+    btn.setAttribute("aria-label", `${label}: ${command}`);
+  });
+}
+
+function getCvarPresetOrder() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CVAR_ORDER_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCvarPresetOrder() {
+  const order = {};
+  document.querySelectorAll(".preset-group").forEach((group, index) => {
+    const key = group.dataset.groupKey || String(index);
+    order[key] = Array.from(group.querySelectorAll(".pill")).map(presetId);
+  });
+  try { localStorage.setItem(CVAR_ORDER_KEY, JSON.stringify(order)); } catch {}
+}
+
+function applyCvarPresetOrder() {
+  const order = getCvarPresetOrder();
+  document.querySelectorAll(".preset-group").forEach((group, index) => {
+    const key = group.dataset.groupKey || String(index);
+    const ids = order[key];
+    const bar = group.querySelector(".pillbar");
+    if (!bar || !Array.isArray(ids)) return;
+    const lookup = new Map(Array.from(bar.querySelectorAll(".pill")).map((btn) => [presetId(btn), btn]));
+    ids.forEach((id) => {
+      const btn = lookup.get(id);
+      if (btn) bar.appendChild(btn);
+    });
+  });
+}
+
+function setupCvarPresetDrag() {
+  let dragged = null;
+  document.querySelectorAll(".preset-group").forEach((group, index) => {
+    group.dataset.groupKey = group.querySelector(".preset-title")?.dataset.i18n || String(index);
+  });
+  document.querySelectorAll(".preset-group .pill").forEach((btn) => {
+    btn.draggable = true;
+    btn.addEventListener("dragstart", (event) => {
+      dragged = btn;
+      btn.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", presetId(btn));
+    });
+    btn.addEventListener("dragend", () => {
+      btn.classList.remove("is-dragging");
+      dragged = null;
+      saveCvarPresetOrder();
+    });
+  });
+  document.querySelectorAll(".preset-group .pillbar").forEach((bar) => {
+    bar.addEventListener("dragover", (event) => {
+      if (!dragged || dragged.parentElement !== bar) return;
+      event.preventDefault();
+      const target = event.target.closest(".pill");
+      if (!target || target === dragged || target.parentElement !== bar) return;
+      const rect = target.getBoundingClientRect();
+      const sameRow = event.clientY >= rect.top && event.clientY <= rect.bottom;
+      const before = sameRow
+        ? event.clientX < rect.left + rect.width / 2
+        : event.clientY < rect.top + rect.height / 2;
+      bar.insertBefore(dragged, before ? target : target.nextSibling);
+    });
+    bar.addEventListener("drop", (event) => {
+      if (!dragged || dragged.parentElement !== bar) return;
+      event.preventDefault();
+      saveCvarPresetOrder();
+    });
   });
 }
 
@@ -91,12 +228,13 @@ const PAGE_SIZE = 5;
 const WS_KEY = "cs2ops_workshop_favs_v2";
 const SHOW_RCON_KEY = "cs2ops_show_rcon_logs_v1";
 const LOCALE_KEY = "cs2ops_locale_v1";
+const CVAR_ORDER_KEY = "cs2ops_cvar_preset_order_v1";
 
 const I18N = {
   "zh-CN": {
     common: {
       set: "设置",
-      clear: "清空",
+      clear: "清除",
       reload: "刷新",
       send: "发送",
       logout: "退出",
@@ -116,6 +254,7 @@ const I18N = {
       title: "配置 / CVAR",
       valuePlaceholder: "例如 16000",
       matchPresets: "比赛",
+      modePresets: "模式",
       moneyPresets: "经济",
       practicePresets: "练习",
       presets: {
@@ -125,18 +264,38 @@ const I18N = {
         "mp_maxrounds:24": "MR12",
         "mp_overtime_enable:1": "开启加时",
         "mp_restartgame:1": "重开 1s",
+        "mp_pause_match:1": "暂停比赛",
+        "mp_unpause_match:1": "继续比赛",
+        "mp_halftime:1": "开启半场",
+        "mp_match_can_clinch:1": "允许提前结束",
+        "mode:competitive": "竞技",
+        "mode:casual": "休闲",
+        "mode:wingman": "搭档",
+        "mode:deathmatch": "死亡竞赛",
+        "mode:armsrace": "军备竞赛",
+        "mode:custom": "自定义",
         "mp_startmoney:800": "$800 开局",
         "mp_startmoney:16000": "$16000 开局",
         "mp_maxmoney:16000": "金钱上限 16000",
         "mp_afterroundmoney:16000": "每回合补满",
         "mp_buytime:9999": "长买枪时间",
         "mp_buy_anywhere:1": "任意地点买枪",
+        "mp_buy_anywhere:0": "仅购买区买枪",
+        "mp_free_armor:1": "免费护甲",
+        "mp_free_armor:0": "关闭免费护甲",
+        "mp_weapons_allow_map_placed:1": "允许地图武器",
         "sv_cheats:1": "练习权限",
         "sv_infinite_ammo:1": "无限弹药",
         "ammo_grenade_limit_total:5": "五颗投掷物",
         "sv_grenade_trajectory_prac_pipreview:1": "投掷预览",
         "mp_warmup_end:1": "结束热身",
-        "bot_quota:0": "清空 Bot"
+        "bot_quota:0": "清空 Bot",
+        "bot_quota:5": "添加 5 个 Bot",
+        "bot_kick:": "踢出 Bot",
+        "bot_stop:1": "冻结 Bot",
+        "bot_stop:0": "恢复 Bot",
+        "mp_limitteams:0": "关闭队伍限制",
+        "mp_autoteambalance:0": "关闭自动平衡"
       },
     },
     map: {
@@ -166,7 +325,7 @@ const I18N = {
       searchPlaceholder: "搜索玩家（名称 / UserID）...",
       kickReasonPlaceholder: "踢出原因（可选）",
       online: "在线",
-      empty: "当前没有玩家在线。",
+      empty: "暂无在线玩家",
       loading: "正在刷新玩家...",
       noMatch: "没有匹配结果。",
       tableName: "玩家",
@@ -174,10 +333,19 @@ const I18N = {
       tableSteam: "SteamID64",
       tableAction: "操作",
       kick: "踢出",
+      kickTitle: "踢出玩家",
+      kickConfirm: "确认踢出玩家 {name}？",
+      bot: "BOT",
+      human: "HUMAN",
+      copySteam: "复制 SteamID64",
+      copiedSteam: "SteamID64 已复制",
+      openProfile: "打开 Steam 个人资料",
       prev: "上一页",
       next: "下一页",
       page: "第 {page} / {total} 页",
       unknown: "未知",
+      unknownPlayer: "Unknown Player",
+      notAvailable: "N/A",
     },
     console: {
       title: "控制台",
@@ -237,6 +405,7 @@ const I18N = {
       title: "Configs / CVARs",
       valuePlaceholder: "e.g. 16000",
       matchPresets: "Match",
+      modePresets: "Mode",
       moneyPresets: "Money",
       practicePresets: "Practice",
       presets: {
@@ -246,18 +415,38 @@ const I18N = {
         "mp_maxrounds:24": "MR12",
         "mp_overtime_enable:1": "Overtime on",
         "mp_restartgame:1": "Restart 1s",
+        "mp_pause_match:1": "Pause match",
+        "mp_unpause_match:1": "Unpause match",
+        "mp_halftime:1": "Halftime on",
+        "mp_match_can_clinch:1": "Allow clinch",
+        "mode:competitive": "Competitive",
+        "mode:casual": "Casual",
+        "mode:wingman": "Wingman",
+        "mode:deathmatch": "Deathmatch",
+        "mode:armsrace": "Arms Race",
+        "mode:custom": "Custom",
         "mp_startmoney:800": "$800 start",
         "mp_startmoney:16000": "$16000 start",
         "mp_maxmoney:16000": "Money cap 16000",
         "mp_afterroundmoney:16000": "Refill after round",
         "mp_buytime:9999": "Long buy time",
         "mp_buy_anywhere:1": "Buy anywhere",
+        "mp_buy_anywhere:0": "Buy zone only",
+        "mp_free_armor:1": "Free armor",
+        "mp_free_armor:0": "No free armor",
+        "mp_weapons_allow_map_placed:1": "Map weapons on",
         "sv_cheats:1": "Practice access",
         "sv_infinite_ammo:1": "Infinite ammo",
         "ammo_grenade_limit_total:5": "Five grenades",
         "sv_grenade_trajectory_prac_pipreview:1": "Grenade preview",
         "mp_warmup_end:1": "End warmup",
-        "bot_quota:0": "Clear bots"
+        "bot_quota:0": "Clear bots",
+        "bot_quota:5": "Add 5 bots",
+        "bot_kick:": "Kick bots",
+        "bot_stop:1": "Freeze bots",
+        "bot_stop:0": "Resume bots",
+        "mp_limitteams:0": "No team limit",
+        "mp_autoteambalance:0": "No auto-balance"
       },
     },
     map: { title: "Change map", standard: "Standard Map" },
@@ -284,7 +473,7 @@ const I18N = {
       searchPlaceholder: "Search player (Name/UserID)...",
       kickReasonPlaceholder: "Kick reason (optional)",
       online: "online",
-      empty: "No players online.",
+      empty: "No players online",
       loading: "Refreshing players...",
       noMatch: "No matches.",
       tableName: "Player",
@@ -292,10 +481,19 @@ const I18N = {
       tableSteam: "SteamID64",
       tableAction: "Action",
       kick: "Kick",
+      kickTitle: "Kick player",
+      kickConfirm: "Kick player {name}?",
+      bot: "BOT",
+      human: "HUMAN",
+      copySteam: "Copy SteamID64",
+      copiedSteam: "SteamID64 copied",
+      openProfile: "Open Steam profile",
       prev: "Prev",
       next: "Next",
       page: "Page {page} / {total}",
-      unknown: "unknown",
+      unknown: "Unknown",
+      unknownPlayer: "Unknown Player",
+      notAvailable: "N/A",
     },
     console: { title: "Console", outputPlaceholder: "Output...", ready: "CS2Ops ready" },
     logs: {
@@ -351,13 +549,22 @@ let playersPage = 1;
 let playersMax = null;
 let playersLoading = true;
 let lastStatusAt = 0;
+let playersRequestInFlight = false;
+let playersLastSignature = "";
 
 let playersCache = [];
 let playersInterval = null;
 
 let logEventSource = null;
 let logReconnectTimer = null;
+let logPollTimer = null;
+let logRefreshInFlight = false;
 let latestLogStatus = null;
+let lastLogSeq = 0;
+let clearedBeforeSeq = 0;
+const seenLogSeqs = new Set();
+const seenLogFingerprints = new Set();
+const logLineBuffer = [];
 
 let showRconLogs = (() => {
   try {
@@ -400,9 +607,20 @@ function mergeSteamIntoPlayers() {
     const steam64 =
       (Number.isFinite(uid) ? steamByUserId.get(uid) : null) ||
       steamByName.get(key) ||
+      p.steam64 ||
       null;
     return { ...p, steam64 };
   });
+}
+
+function playersSignature(list = playersCache) {
+  return JSON.stringify(list.map((p) => [
+    p.userid ?? "",
+    p.name ?? "",
+    p.steam64 ?? "",
+    p.isBot ? 1 : 0,
+    p.avatar ?? "",
+  ]));
 }
 
 /* ===== Theme ===== */
@@ -434,8 +652,13 @@ function initTheme() {
 }
 
 /* ===== API ===== */
+function appPath(path) {
+  const normalized = String(path || "/");
+  return normalized.replace(/^\/+/, "");
+}
+
 async function api(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(appPath(path), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body || {}),
@@ -446,17 +669,26 @@ async function api(path, body) {
 }
 
 async function apiGet(path) {
-  const res = await fetch(path);
+  const res = await fetch(appPath(path));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
   return data;
 }
 
-function appendOut(t) {
+function appendRconOutput(t) {
   const el = $("out");
   if (!el) return;
   el.value = (el.value ? el.value + "\n" : "") + t;
   el.scrollTop = el.scrollHeight;
+}
+
+function appendOut(t) {
+  appendRconOutput(t);
+}
+
+function clearRconOutput() {
+  const el = $("out");
+  if (el) el.value = "";
 }
 
 /* ===== Clear inputs on action ===== */
@@ -494,7 +726,7 @@ function showAC(items) {
 }
 
 async function fetchAC(q) {
-  const res = await fetch("/api/autocomplete?q=" + encodeURIComponent(q) + "&limit=60");
+  const res = await fetch(appPath("/api/autocomplete?q=" + encodeURIComponent(q) + "&limit=60"));
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "autocomplete failed");
   return data.items || [];
@@ -560,6 +792,11 @@ function renderWorkshopSaved() {
   if (!wrap) return;
 
   const list = getWorkshopSaved();
+  const clearBtn = $("wsClear");
+  if (clearBtn) {
+    clearBtn.hidden = !list.length;
+    clearBtn.disabled = !list.length;
+  }
   wrap.innerHTML = "";
 
   if (!list.length) {
@@ -605,9 +842,13 @@ function renderWorkshopSaved() {
     play.className = "mini-btn";
     play.textContent = t("workshop.start");
     play.addEventListener("click", async () => {
-      const r = await api("/api/map/workshop", { id: item.id });
-      appendOut("> host_workshop_map " + item.id + "\n" + (r.out || "OK"));
-      clearInputs(["workshopId", "workshopName"]);
+      try {
+        const r = await api("/api/map/workshop", { id: item.id });
+        appendOut("> host_workshop_map " + item.id + "\n" + (r.out || "OK"));
+        clearInputs(["workshopId", "workshopName"]);
+      } finally {
+        refreshHttpLogs({ force: true }).catch(() => {});
+      }
     });
 
     const edit = document.createElement("button");
@@ -699,6 +940,71 @@ function parsePlayersRaw(raw) {
   return out;
 }
 
+function normalizePlayer(player = {}) {
+  const name = String(player.name || "").trim() || t("players.unknownPlayer");
+  const userid = player.userid ?? player.userId ?? null;
+  const uniqueId = player.uniqueId || player.uniqueid || "";
+  const steam64 = player.steam64 || player.steamid64 || player.steamId64 || null;
+  const team = normalizePlayerTeam(player.team);
+  const isBot = Boolean(
+    player.bot ||
+    player.isBot ||
+    /^bot$/i.test(String(steam64 || "")) ||
+    /\bBOT\b/i.test(String(uniqueId || "")) ||
+    /^\s*\d+\s+BOT\b/i.test(String(player.raw || ""))
+  );
+  return {
+    ...player,
+    name,
+    userid: Number.isFinite(Number(userid)) ? Number(userid) : null,
+    steam64: isBot ? null : steam64,
+    isBot,
+    team,
+    avatar: player.avatar || player.avatarUrl || "",
+  };
+}
+
+function normalizePlayerTeam(value) {
+  const raw = String(value || "").trim().toUpperCase();
+  if (raw === "CT" || raw === "COUNTERTERRORIST" || raw === "COUNTER-TERRORIST") return "CT";
+  if (raw === "T" || raw === "TERRORIST" || raw === "TERRORISTS") return "T";
+  if (raw === "SPECTATOR" || raw === "SPEC") return "SPEC";
+  return "";
+}
+
+function isValidSteam64(value) {
+  return /^[0-9]{17}$/.test(String(value || ""));
+}
+
+function playerAvatarDataUri(isBot = false) {
+  const label = isBot ? "BOT" : "P";
+  const hue = isBot ? 205 : 156;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72">
+  <rect width="72" height="72" rx="20" fill="hsl(${hue} 55% 18%)"/>
+  <circle cx="36" cy="28" r="13" fill="hsl(${hue} 65% 58%)"/>
+  <path d="M16 62c4-14 14-21 20-21s16 7 20 21" fill="hsl(${hue} 58% 42%)"/>
+  <text x="36" y="42" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="800" fill="#eaf2ff">${label}</text>
+</svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+async function copyText(value) {
+  const text = String(value || "");
+  if (!text) return;
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+  } else {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    ta.remove();
+  }
+}
+
 async function refreshServerStatusIfNeeded() {
   const now = Date.now();
   if (now - lastStatusAt < 15000) return;
@@ -743,65 +1049,111 @@ function renderPlayers() {
   countEl.textContent = `${playersCache.length}${maxText} ${t("players.online")}`;
 
   listEl.innerHTML = "";
-
-  const table = document.createElement("table");
-  table.className = "players-table";
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>${t("players.tableName")}</th>
-        <th>${t("players.tableUserId")}</th>
-        <th>${t("players.tableSteam")}</th>
-        <th>${t("players.tableAction")}</th>
-      </tr>
-    </thead>
-  `;
-  const tbody = document.createElement("tbody");
+  const listWrap = document.createElement("div");
+  listWrap.className = "players-table-wrap players-card-list";
 
   if (playersLoading) {
-    const row = document.createElement("tr");
-    row.className = "players-empty-row players-loading-row";
-    const cell = document.createElement("td");
-    cell.colSpan = 4;
-    cell.textContent = t("players.loading");
-    row.appendChild(cell);
-    tbody.appendChild(row);
+    const empty = document.createElement("div");
+    empty.className = "players-empty-state players-loading-row";
+    empty.textContent = t("players.loading");
+    listWrap.appendChild(empty);
   } else if (!pageItems.length) {
-    const row = document.createElement("tr");
-    row.className = "players-empty-row";
-    const cell = document.createElement("td");
-    cell.colSpan = 4;
-    cell.textContent = playersCache.length ? t("players.noMatch") : t("players.empty");
-    row.appendChild(cell);
-    tbody.appendChild(row);
+    const empty = document.createElement("div");
+    empty.className = "players-empty-state";
+    empty.textContent = playersCache.length ? t("players.noMatch") : t("players.empty");
+    listWrap.appendChild(empty);
   } else {
-    for (const p of pageItems) {
-      const row = document.createElement("tr");
+    for (const rawPlayer of pageItems) {
+      const p = normalizePlayer(rawPlayer);
+      const hasSteam = isValidSteam64(p.steam64);
+      const useridText = p.userid === null ? t("players.notAvailable") : `#${p.userid}`;
+      const steamText = p.isBot ? t("players.bot") : (hasSteam ? p.steam64 : t("players.unknown"));
 
-      const nameCell = document.createElement("td");
+      const row = document.createElement("div");
+      row.className = "player-card-row";
+
+      const main = document.createElement("div");
+      main.className = "player-card-main";
+
       const playerIdentity = document.createElement("div");
       playerIdentity.className = "player-identity";
-      const av = document.createElement("div");
-      av.className = "avatar";
-      const name = document.createElement("div");
+      const avatar = document.createElement("img");
+      avatar.className = "avatar player-avatar";
+      avatar.alt = "";
+      avatar.src = p.avatar || playerAvatarDataUri(p.isBot);
+      avatar.addEventListener("error", () => {
+        avatar.src = playerAvatarDataUri(p.isBot);
+      }, { once: true });
+
+      const meta = document.createElement("div");
+      meta.className = "player-meta";
+      const title = document.createElement("div");
+      title.className = "player-title-row";
+
+      const name = document.createElement("span");
       name.className = "player-name";
-      name.textContent = p.name || `(${t("players.unknown")})`;
-      playerIdentity.appendChild(av);
-      playerIdentity.appendChild(name);
-      nameCell.appendChild(playerIdentity);
+      name.textContent = p.name;
+      name.title = p.name;
 
-      const useridCell = document.createElement("td");
-      useridCell.textContent = String(p.userid ?? "-");
+      const type = document.createElement("span");
+      type.className = `player-type-badge ${p.isBot ? "is-bot" : "is-human"}`;
+      type.textContent = p.isBot ? t("players.bot") : t("players.human");
 
-      const steamCell = document.createElement("td");
-      steamCell.className = "mono-cell";
-      steamCell.textContent = p.steam64 || "-";
+      title.appendChild(name);
+      title.appendChild(type);
 
-      const actionCell = document.createElement("td");
+      const steam = document.createElement("div");
+      steam.className = "player-sub mono-cell";
+      steam.textContent = steamText;
+      steam.title = steamText;
+
+      meta.appendChild(title);
+      meta.appendChild(steam);
+      playerIdentity.appendChild(avatar);
+      playerIdentity.appendChild(meta);
+      main.appendChild(playerIdentity);
+
+      const userid = document.createElement("span");
+      userid.className = "player-userid badge";
+      userid.textContent = useridText;
+      userid.title = useridText;
+
+      const actions = document.createElement("div");
+      actions.className = "player-actions";
+
+      if (hasSteam) {
+        const copyBtn = document.createElement("button");
+        copyBtn.className = "mini-btn player-icon-action";
+        copyBtn.type = "button";
+        copyBtn.textContent = "⧉";
+        copyBtn.title = t("players.copySteam");
+        copyBtn.setAttribute("aria-label", t("players.copySteam"));
+        copyBtn.addEventListener("click", async () => {
+          await copyText(p.steam64);
+          toast(t("players.copiedSteam"));
+        });
+        actions.appendChild(copyBtn);
+
+        const profile = document.createElement("a");
+        profile.className = "mini-btn player-icon-action";
+        profile.href = `https://steamcommunity.com/profiles/${p.steam64}`;
+        profile.target = "_blank";
+        profile.rel = "noopener noreferrer";
+        profile.textContent = "↗";
+        profile.title = t("players.openProfile");
+        profile.setAttribute("aria-label", t("players.openProfile"));
+        actions.appendChild(profile);
+      }
+
       const kickBtn = document.createElement("button");
       kickBtn.className = "mini-btn mini-danger";
+      kickBtn.type = "button";
       kickBtn.textContent = t("players.kick");
+      kickBtn.title = t("players.kickTitle");
+      kickBtn.disabled = p.userid === null;
       kickBtn.addEventListener("click", async () => {
+        if (p.userid === null) return;
+        if (!confirm(t("players.kickConfirm", { name: p.name }))) return;
         const reasonEl = $("kickReason");
         const reason = reasonEl?.value?.trim() || "";
         const cmd = `kickid ${p.userid}` + (reason ? ` "${escapeQuotes(reason)}"` : "");
@@ -814,23 +1166,19 @@ function renderPlayers() {
         }
 
         clearInputs(["kickReason"]);
+        await refreshHttpLogs({ force: true }).catch(() => {});
         await loadPlayers().catch(() => {});
       });
-      actionCell.appendChild(kickBtn);
+      actions.appendChild(kickBtn);
 
-      row.appendChild(nameCell);
-      row.appendChild(useridCell);
-      row.appendChild(steamCell);
-      row.appendChild(actionCell);
-      tbody.appendChild(row);
+      row.appendChild(main);
+      row.appendChild(userid);
+      row.appendChild(actions);
+      listWrap.appendChild(row);
     }
   }
 
-  table.appendChild(tbody);
-  const tableWrap = document.createElement("div");
-  tableWrap.className = "players-table-wrap";
-  tableWrap.appendChild(table);
-  listEl.appendChild(tableWrap);
+  listEl.appendChild(listWrap);
 
   const pager = document.createElement("div");
   pager.className = "players-pager";
@@ -839,8 +1187,8 @@ function renderPlayers() {
   leftPager.className = "players-pager-actions";
 
   const prev = document.createElement("button");
-  prev.className = "btn players-page-btn";
-  prev.textContent = "<";
+  prev.className = "btn players-page-btn players-page-prev";
+  prev.textContent = "";
   prev.title = t("players.prev");
   prev.setAttribute("aria-label", t("players.prev"));
   prev.disabled = playersPage <= 1 || totalPages <= 1;
@@ -850,8 +1198,8 @@ function renderPlayers() {
   });
 
   const next = document.createElement("button");
-  next.className = "btn players-page-btn";
-  next.textContent = ">";
+  next.className = "btn players-page-btn players-page-next";
+  next.textContent = "";
   next.title = t("players.next");
   next.setAttribute("aria-label", t("players.next"));
   next.disabled = playersPage >= totalPages || totalPages <= 1;
@@ -875,28 +1223,47 @@ function renderPlayers() {
 }
 
 async function loadPlayers() {
+  if (playersRequestInFlight) return;
+  playersRequestInFlight = true;
   const hadRows = playersCache.length > 0;
-  playersLoading = true;
+  playersLoading = !hadRows;
   if (!hadRows) renderPlayers();
+  let needsRender = !hadRows;
 
   try {
-    const res = await fetch("/api/players");
+    const res = await fetch(appPath("/api/players"));
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "failed");
 
-    playersCache = parsePlayersRaw(data.raw || "");
+    const nextPlayers = Array.isArray(data.players)
+      ? data.players.map(normalizePlayer)
+      : parsePlayersRaw(data.raw || "").map(normalizePlayer);
+    playersCache = nextPlayers;
     mergeSteamIntoPlayers();
+    const nextSignature = playersSignature(playersCache);
+    needsRender = needsRender || nextSignature !== playersLastSignature;
+    playersLastSignature = nextSignature;
 
-    await refreshServerStatusIfNeeded();
+    const prevMax = playersMax;
+    if (Number.isFinite(Number(data.maxPlayers)) && Number(data.maxPlayers) > 0) {
+      playersMax = Number(data.maxPlayers);
+    } else {
+      await refreshServerStatusIfNeeded();
+    }
+    needsRender = needsRender || prevMax !== playersMax;
   } finally {
     playersLoading = false;
-    renderPlayers();
+    playersRequestInFlight = false;
+    if (needsRender) renderPlayers();
   }
 }
 
 function startPlayersAutoSync() {
   if (playersInterval) return;
-  playersInterval = setInterval(() => loadPlayers().catch(() => {}), 5000);
+  playersInterval = setInterval(() => {
+    if (document.hidden) return;
+    loadPlayers().catch(() => {});
+  }, 5000);
 }
 
 /* ===== CVAR / Commands / Maps ===== */
@@ -908,10 +1275,42 @@ async function setCvar() {
   const value = v.value.trim();
   if (!name) return;
 
-  const r = await api("/api/cvar", { name, value });
-  appendOut("> " + name + " " + value + "\n" + (r.out || "OK"));
+  try {
+    const r = await api("/api/cvar", { name, value });
+    appendOut("> " + name + " " + value + "\n" + (r.out || "OK"));
+    clearInputs(["cvarName", "cvarValue"]);
+  } finally {
+    refreshHttpLogs({ force: true }).catch(() => {});
+  }
+}
 
-  clearInputs(["cvarName", "cvarValue"]);
+async function runPresetCommand(btn) {
+  const command = String(btn?.dataset?.command || "").trim();
+  const commands = command
+    .split(";")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!commands.length) return;
+
+  if (!btn.dataset.presetKey && commands.length === 1) {
+    const n = $("cvarName"), v = $("cvarValue");
+    if (!n || !v) return;
+    n.value = btn.dataset.cvar || "";
+    v.value = btn.dataset.val || "";
+    await setCvar();
+    return;
+  }
+
+  try {
+    const output = [];
+    for (const item of commands) {
+      const r = await api("/api/command", { command: item });
+      output.push("> " + item + "\n" + (r.out || "OK"));
+    }
+    appendOut(output.join("\n"));
+  } finally {
+    refreshHttpLogs({ force: true }).catch(() => {});
+  }
 }
 
 async function sendCmd() {
@@ -921,13 +1320,15 @@ async function sendCmd() {
   const command = c.value.trim();
   if (!command) return;
 
-  const r = await api("/api/command", { command });
-  appendOut("> " + command + "\n" + (r.out || "OK"));
-
-  // autocomplete schlie闁煎绂峮 + input leeren
-  const ac = $("ac");
-  if (ac) ac.style.display = "none";
-  clearInputs(["cmd"]);
+  try {
+    const r = await api("/api/command", { command });
+    appendOut("> " + command + "\n" + (r.out || "OK"));
+    clearInputs(["cmd"]);
+  } finally {
+    const ac = $("ac");
+    if (ac) ac.style.display = "none";
+    refreshHttpLogs({ force: true }).catch(() => {});
+  }
 }
 
 async function loadMaps() {
@@ -940,6 +1341,9 @@ async function loadMaps() {
   (m.standard || []).forEach((map) => {
     const tile = document.createElement("div");
     tile.className = "map-tile";
+    tile.dataset.fullName = map;
+    tile.dataset.preview = map;
+    tile.setAttribute("aria-label", map);
 
     const thumb = document.createElement("div");
     thumb.className = "map-thumb";
@@ -963,8 +1367,12 @@ async function loadMaps() {
     tile.appendChild(meta);
 
     tile.addEventListener("click", async () => {
-      const r = await api("/api/map/standard", { map });
-      appendOut("> changelevel " + map + "\n" + (r.out || "OK"));
+      try {
+        const r = await api("/api/map/standard", { map });
+        appendOut("> changelevel " + map + "\n" + (r.out || "OK"));
+      } finally {
+        refreshHttpLogs({ force: true }).catch(() => {});
+      }
     });
 
     wrap.appendChild(tile);
@@ -978,10 +1386,13 @@ async function workshopStart() {
   const id = wid.value.trim();
   if (!id) return;
 
-  const r = await api("/api/map/workshop", { id });
-  appendOut("> host_workshop_map " + id + "\n" + (r.out || "OK"));
-
-  clearInputs(["workshopId", "workshopName"]);
+  try {
+    const r = await api("/api/map/workshop", { id });
+    appendOut("> host_workshop_map " + id + "\n" + (r.out || "OK"));
+    clearInputs(["workshopId", "workshopName"]);
+  } finally {
+    refreshHttpLogs({ force: true }).catch(() => {});
+  }
 }
 
 /* ===== Logs ===== */
@@ -1012,10 +1423,25 @@ function addLogLine(line) {
   const box = $("logbox");
   if (!box) return;
 
-  box.textContent += line + "\n";
-  const lines = box.textContent.split("\n");
-  if (lines.length > 900) box.textContent = lines.slice(lines.length - 900).join("\n");
+  logLineBuffer.push(line);
+  if (logLineBuffer.length > MAX_VISIBLE_LOG_LINES) {
+    logLineBuffer.splice(0, logLineBuffer.length - MAX_VISIBLE_LOG_LINES);
+  }
+  box.textContent = logLineBuffer.join("\n") + "\n";
   box.scrollTop = box.scrollHeight;
+}
+
+function pruneSeenLogs() {
+  if (seenLogSeqs.size > 1200) {
+    const recent = Array.from(seenLogSeqs).slice(-600);
+    seenLogSeqs.clear();
+    recent.forEach((seq) => seenLogSeqs.add(seq));
+  }
+  if (seenLogFingerprints.size > 1200) {
+    const recent = Array.from(seenLogFingerprints).slice(-600);
+    seenLogFingerprints.clear();
+    recent.forEach((fp) => seenLogFingerprints.add(fp));
+  }
 }
 
 function sourceLabel(source) {
@@ -1071,6 +1497,17 @@ function renderLogStatus(payload) {
 function handleLogItem(item) {
   const line = typeof item === "string" ? item : item?.line || "";
   if (!line) return;
+  const seq = Number(typeof item === "string" ? 0 : item?.seq || 0);
+
+  if (Number.isFinite(seq) && seq > 0) {
+    lastLogSeq = Math.max(lastLogSeq, seq);
+    if (seq <= clearedBeforeSeq || seenLogSeqs.has(seq)) return;
+    seenLogSeqs.add(seq);
+  } else {
+    const fp = `${typeof item === "string" ? "" : item?.ts || ""}:${line}`;
+    if (seenLogFingerprints.has(fp)) return;
+    seenLogFingerprints.add(fp);
+  }
 
   const hit = parseSteamValidatedLine(line);
   if (hit) {
@@ -1082,6 +1519,7 @@ function handleLogItem(item) {
   }
 
   addLogLine(line);
+  pruneSeenLogs();
 }
 
 async function loadLogStatus() {
@@ -1090,15 +1528,70 @@ async function loadLogStatus() {
   return data;
 }
 
+async function refreshHttpLogs({ force = false } = {}) {
+  if (logRefreshInFlight && !force) return null;
+  logRefreshInFlight = true;
+  try {
+    const since = Math.max(lastLogSeq, clearedBeforeSeq);
+    const data = await apiGet(`/api/logs/recent?since=${encodeURIComponent(String(since))}`);
+    renderLogStatus(data);
+    const lines = Array.isArray(data.lines) ? data.lines : [];
+    for (const item of lines) handleLogItem(item);
+    const maxSeq = Number(data.stats?.maxSeq || 0);
+    if (Number.isFinite(maxSeq)) lastLogSeq = Math.max(lastLogSeq, maxSeq);
+    return data;
+  } finally {
+    logRefreshInFlight = false;
+  }
+}
+
+function scheduleHttpLogPoll(delay = document.hidden ? HTTP_LOG_POLL_HIDDEN_MS : HTTP_LOG_POLL_VISIBLE_MS) {
+  clearTimeout(logPollTimer);
+  logPollTimer = setTimeout(async () => {
+    try {
+      await refreshHttpLogs();
+    } catch {}
+    scheduleHttpLogPoll();
+  }, delay);
+}
+
+function clearHttpLogsView() {
+  const maxSeq = Number(latestLogStatus?.stats?.maxSeq || 0);
+  clearedBeforeSeq = Math.max(clearedBeforeSeq, lastLogSeq, Number.isFinite(maxSeq) ? maxSeq : 0);
+  lastLogSeq = Math.max(lastLogSeq, clearedBeforeSeq);
+  seenLogSeqs.clear();
+  seenLogFingerprints.clear();
+  logLineBuffer.length = 0;
+  const box = $("logbox");
+  if (box) box.textContent = "";
+}
+
 async function postLogAction(path, label) {
-  const data = await api(path, {});
-  appendOut(`> ${label}\n` + JSON.stringify(data, null, 2));
-  await loadLogStatus().catch(() => {});
+  try {
+    const data = await api(path, {});
+    const lines = [`> ${label}`];
+    if (Array.isArray(data.commands)) {
+      for (const item of data.commands) {
+        const state = item.ok ? "OK" : "ERROR";
+        const warning = item.warning ? " warning" : "";
+        lines.push(`${state}${warning}: ${item.command}`);
+        if (item.out) lines.push(String(item.out));
+      }
+    } else if (data.stats) {
+      lines.push(`OK: total logs ${data.stats.totalLines ?? 0}`);
+    } else {
+      lines.push(data.ok ? "OK" : "ERROR");
+    }
+    appendOut(lines.join("\n"));
+    await loadLogStatus().catch(() => {});
+  } finally {
+    await refreshHttpLogs({ force: true }).catch(() => {});
+  }
 }
 
 async function logout() {
-  await fetch("/logout", { method: "POST" }).catch(() => {});
-  window.location.href = "/login";
+  await fetch(appPath("/logout"), { method: "POST" }).catch(() => {});
+  window.location.href = appPath("/login");
 }
 
 /* ===== Log badge + RCON toggle UI wiring (no HTML changes needed) ===== */
@@ -1247,9 +1740,10 @@ function startLogs() {
   stopLogs(); // immer nur 1 Verbindung
   ensureLogBadgeAndControls();
   setLogBadge("reconnecting");
+  scheduleHttpLogPoll(HTTP_LOG_POLL_VISIBLE_MS);
 
   try {
-    logEventSource = new EventSource("/api/logs/stream");
+    logEventSource = new EventSource(appPath("/api/logs/stream"));
   } catch (e) {
     logEventSource = null;
     setLogBadge("offline");
@@ -1260,6 +1754,7 @@ function startLogs() {
   logEventSource.onopen = () => {
     setLogBadge("reconnecting");
     loadLogStatus().catch(() => {});
+    refreshHttpLogs({ force: true }).catch(() => {});
   };
 
   logEventSource.onmessage = (e) => {
@@ -1291,6 +1786,10 @@ function startLogs() {
 }
 
 function stopLogs() {
+  if (logPollTimer) {
+    clearTimeout(logPollTimer);
+    logPollTimer = null;
+  }
   if (logReconnectTimer) {
     clearTimeout(logReconnectTimer);
     logReconnectTimer = null;
@@ -1302,18 +1801,32 @@ function stopLogs() {
   setLogBadge("offline");
 }
 
-function clearLogs() {
-  const box = $("logbox");
-  if (box) box.textContent = "";
+async function clearLogs() {
+  clearHttpLogsView();
+  try {
+    await api("/api/logs/clear", {});
+    await loadLogStatus().catch(() => {});
+  } catch (e) {
+    softErr(t("errors.testLog"), e);
+  }
 }
 
 // sauber beenden
 function closeStreams() {
+  if (logPollTimer) clearTimeout(logPollTimer);
+  logPollTimer = null;
   try { logEventSource?.close(); } catch {}
   logEventSource = null;
 }
 window.addEventListener("beforeunload", closeStreams);
 window.addEventListener("pagehide", closeStreams);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    refreshHttpLogs({ force: true }).catch(() => {});
+    loadPlayers().catch(() => {});
+  }
+  scheduleHttpLogPoll(document.hidden ? HTTP_LOG_POLL_HIDDEN_MS : 0);
+});
 
 /* ===== Bindings ===== */
 function bindUI() {
@@ -1326,15 +1839,12 @@ function bindUI() {
 
   on("cvarSet", "click", () => setCvar().catch((e) => softErr(t("errors.cvar"), e)));
   document.querySelectorAll(".pill").forEach((btn) => {
-    const commandPreview = `${btn.dataset.cvar || ""} ${btn.dataset.val || ""}`.trim();
+    const commandPreview = btn.dataset.command || `${btn.dataset.cvar || ""} ${btn.dataset.val || ""}`.trim();
     btn.dataset.command = commandPreview;
-    btn.title = commandPreview;
+    btn.dataset.preview = commandPreview;
+    btn.removeAttribute("title");
     btn.addEventListener("click", () => {
-      const n = $("cvarName"), v = $("cvarValue");
-      if (!n || !v) return;
-      n.value = btn.dataset.cvar || "";
-      v.value = btn.dataset.val || "";
-      setCvar().catch((e) => softErr(t("errors.cvar"), e));
+      runPresetCommand(btn).catch((e) => softErr(t("errors.cvar"), e));
     });
   });
 
@@ -1349,6 +1859,7 @@ function bindUI() {
   });
 
   on("cmdSend", "click", () => sendCmd().catch((e) => softErr(t("errors.command"), e)));
+  on("rconClear", "click", clearRconOutput);
   on("cmd", "keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -1368,17 +1879,36 @@ function bindUI() {
   });
 
   on("logClear", "click", clearLogs);
+  const rconToggle = $("rconToggle");
+  if (rconToggle) {
+    rconToggle.checked = !!showRconLogs;
+    rconToggle.addEventListener("change", () => {
+      showRconLogs = !!rconToggle.checked;
+      try { localStorage.setItem(SHOW_RCON_KEY, showRconLogs ? "1" : "0"); } catch {}
+    });
+  }
   on("logRegisterHttp", "click", () => postLogAction("/api/logs/register-http", t("logs.registerAction")).catch((e) => softErr(t("errors.registerLog"), e)));
   on("logUnregisterHttp", "click", () => postLogAction("/api/logs/unregister-http", t("logs.unregisterAction")).catch((e) => softErr(t("errors.unregisterLog"), e)));
   on("logTest", "click", () => postLogAction("/api/logs/test", t("logs.testAction")).catch((e) => softErr(t("errors.testLog"), e)));
-  on("logRefreshStatus", "click", () => loadLogStatus().catch((e) => softErr(t("errors.logStatus"), e)));
+  on("logRefreshStatus", "click", async () => {
+    try {
+      await loadLogStatus();
+    } catch (e) {
+      softErr(t("errors.logStatus"), e);
+    } finally {
+      refreshHttpLogs({ force: true }).catch(() => {});
+    }
+  });
 }
 
 /* ===== Init ===== */
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    setupCvarPresetDrag();
+    applyCvarPresetOrder();
     applyI18n();
     initTheme();
+    setupHoverPreview();
     bindUI();
     renderWorkshopSaved();
 

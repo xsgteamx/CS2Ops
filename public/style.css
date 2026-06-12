@@ -1235,7 +1235,7 @@ textarea:-webkit-autofill{
 .log-status-grid > div:nth-child(6)::before{ content: ">"; }
 
 .players-loading-row td::before{
-  content: "â†?;
+  content: "";
   display: inline-flex;
   width: 18px;
   height: 18px;
@@ -2434,7 +2434,7 @@ textarea{
 .log-status-grid > div:nth-child(6)::before{ content: ">"; }
 
 .players-loading-row td::before{
-  content: "â†?;
+  content: "";
   display: inline-flex;
   width: 18px;
   height: 18px;
@@ -2647,4 +2647,1405 @@ textarea{
   box-shadow:
     0 8px 18px rgba(96,165,250,.14),
     0 1px 0 rgba(255,255,255,.16) inset !important;
+}
+
+/* Mobile header fit: keep the brand and controls in separate rows. */
+@media (max-width: 640px){
+  .topbar{
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .brand{
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  .brand h1{
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .actions{
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .locale-switch,
+  .actions .btn{
+    flex: 0 0 auto !important;
+  }
+
+  .actions .badge{
+    display: none !important;
+  }
+
+  #themeToggle,
+  #logoutBtn{
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 10px !important;
+  }
+}
+
+@media (max-width: 380px){
+  #themeToggle .btn-label{
+    display: none !important;
+  }
+
+  #themeToggle{
+    width: 40px !important;
+    justify-content: center !important;
+    padding: 0 !important;
+  }
+
+  #logoutBtn{
+    min-width: 64px !important;
+    justify-content: center !important;
+  }
+}
+
+/* Final small icon system: consistent inline SVG masks without external assets. */
+.card h2 > span:first-child::before,
+.btn::before,
+.mini-btn::before{
+  content: "" !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
+  display: inline-flex !important;
+  opacity: .92 !important;
+  background: currentColor !important;
+  -webkit-mask: var(--icon) center / contain no-repeat !important;
+  mask: var(--icon) center / contain no-repeat !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.card h2 > span:first-child::before{
+  width: 18px !important;
+  height: 18px !important;
+  flex-basis: 18px !important;
+  color: var(--accent) !important;
+  background: linear-gradient(135deg, var(--accent-blue), #10b981) !important;
+}
+
+.cfg h2 > span:first-child{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65-2-3.46-2.49 1a7.3 7.3 0 0 0-1.69-.98L15 3.25h-4l-.36 2.68c-.6.23-1.16.56-1.69.98l-2.49-1-2 3.46 2.11 1.65c-.04.32-.07.65-.07.98s.02.66.07.98l-2.11 1.65 2 3.46 2.49-1c.52.4 1.09.73 1.69.98L11 20.75h4l.36-2.68c.6-.25 1.17-.58 1.69-.98l2.49 1 2-3.46-2.11-1.65ZM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5Z'/%3E%3C/svg%3E"); }
+.players h2 > span:first-child{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M16 11a4 4 0 1 0-3.99-4A4 4 0 0 0 16 11Zm-8 0a3 3 0 1 0-3-3 3 3 0 0 0 3 3Zm0 2c-2.67 0-6 1.34-6 4v2h12v-2c0-2.66-3.33-4-6-4Zm8 0c-.31 0-.66.02-1.03.07 1.16.84 2.03 1.96 2.03 3.43V19h5v-2c0-2.66-3.33-4-6-4Z'/%3E%3C/svg%3E"); }
+.map h2 > span:first-child{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m15 5.1-6-2.1-7 2.7v16.1l7-2.7 6 2.1 7-2.7V2.4l-7 2.7Zm-5 .2 4 1.4v12.2l-4-1.4V5.3Zm-6 1.8 4-1.5v11.9l-4 1.5V7.1Zm16 10-4 1.5V6.7l4-1.5v11.9Z'/%3E%3C/svg%3E"); }
+.logs-card h2 > span:first-child{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M4 4h16v3H4V4Zm0 5h16v3H4V9Zm0 5h11v3H4v-3Zm0 5h16v2H4v-2Z'/%3E%3C/svg%3E"); }
+.console-card h2 > span:first-child{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M3 4h18v16H3V4Zm2 2v12h14V6H5Zm2.2 8.6 3.1-2.6-3.1-2.6 1.3-1.5 4.9 4.1-4.9 4.1-1.3-1.5ZM13 15h5v2h-5v-2Z'/%3E%3C/svg%3E"); }
+
+#cvarSet{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z'/%3E%3C/svg%3E"); }
+#wsStart,
+#cmdSend,
+#logoutBtn{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 5v14l11-7L8 5Z'/%3E%3C/svg%3E"); }
+#wsSave{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4ZM7 5h8v5H7V5Zm10 14H7v-6h10v6Z'/%3E%3C/svg%3E"); }
+#logRegisterHttp{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 3 7 8h3v7h4V8h3l-5-5ZM5 19h14v2H5v-2Z'/%3E%3C/svg%3E"); }
+#logUnregisterHttp,
+#logClear,
+#wsClear{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m7 5 5 5 5-5 2 2-5 5 5 5-2 2-5-5-5 5-2-2 5-5-5-5 2-2Z'/%3E%3C/svg%3E"); }
+#logTest{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 5v14l11-7L8 5Z'/%3E%3C/svg%3E"); }
+#logRefreshStatus{ --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.3L13 11h8V3l-3.3 3.3Z'/%3E%3C/svg%3E"); }
+
+#themeToggle .icon{
+  font-size: 0 !important;
+  color: var(--accent) !important;
+  background: currentColor !important;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2a10 10 0 1 0 0 20 7.5 7.5 0 0 1 0-20Z'/%3E%3C/svg%3E") center / contain no-repeat !important;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 2a10 10 0 1 0 0 20 7.5 7.5 0 0 1 0-20Z'/%3E%3C/svg%3E") center / contain no-repeat !important;
+}
+
+/* Icon safety override: do not render placeholder blocks on buttons without icons. */
+.btn::before,
+.mini-btn::before{
+  display: none !important;
+  content: none !important;
+}
+
+#cvarSet::before,
+#wsStart::before,
+#wsSave::before,
+#cmdSend::before,
+#logRegisterHttp::before,
+#logUnregisterHttp::before,
+#logTest::before,
+#logRefreshStatus::before,
+#logClear::before,
+#wsClear::before,
+#logoutBtn::before{
+  content: "" !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex: 0 0 16px !important;
+  display: inline-flex !important;
+  opacity: .92 !important;
+  background: currentColor !important;
+  -webkit-mask: var(--icon) center / contain no-repeat !important;
+  mask: var(--icon) center / contain no-repeat !important;
+}
+
+/* Redone final icon layer: visible in light mode, cleaner HTTP log status marks. */
+#themeToggle .icon{
+  position: relative !important;
+  width: 18px !important;
+  height: 18px !important;
+  flex: 0 0 18px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0 !important;
+  color: #2563eb !important;
+  background: transparent !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+}
+
+#themeToggle .icon::before{
+  content: "" !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  border-radius: 999px !important;
+  background:
+    radial-gradient(circle at center, transparent 0 37%, currentColor 38% 57%, transparent 58%),
+    conic-gradient(from 0deg, currentColor 0 7%, transparent 7% 17%, currentColor 17% 24%, transparent 24% 42%, currentColor 42% 49%, transparent 49% 67%, currentColor 67% 74%, transparent 74% 92%, currentColor 92% 100%) !important;
+}
+
+[data-theme="dark"] #themeToggle .icon{
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] #themeToggle .icon::before{
+  background:
+    radial-gradient(circle at 68% 34%, var(--panel) 0 36%, transparent 37%),
+    currentColor !important;
+}
+
+.log-status-grid > div::before{
+  content: "" !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--accent-blue) !important;
+  background: currentColor !important;
+  box-shadow: none !important;
+}
+
+.log-status-grid > div:nth-child(1)::before{
+  border-radius: 4px !important;
+  clip-path: polygon(0 8%, 100% 8%, 100% 24%, 0 24%, 0 42%, 100% 42%, 100% 58%, 0 58%, 0 76%, 70% 76%, 70% 92%, 0 92%) !important;
+}
+
+.log-status-grid > div:nth-child(2)::before{
+  color: #16a34a !important;
+  border-radius: 999px !important;
+}
+
+.log-status-grid > div:nth-child(3)::before{
+  color: #d97706 !important;
+  clip-path: polygon(50% 0, 92% 22%, 82% 82%, 50% 100%, 18% 82%, 8% 22%) !important;
+}
+
+.log-status-grid > div:nth-child(4)::before{
+  clip-path: polygon(50% 0, 100% 28%, 100% 72%, 50% 100%, 0 72%, 0 28%) !important;
+}
+
+.log-status-grid > div:nth-child(5)::before{
+  clip-path: polygon(20% 0, 38% 0, 34% 24%, 62% 24%, 66% 0, 84% 0, 80% 24%, 100% 24%, 100% 42%, 77% 42%, 72% 66%, 92% 66%, 92% 84%, 69% 84%, 66% 100%, 48% 100%, 51% 84%, 23% 84%, 20% 100%, 2% 100%, 5% 84%, 0 84%, 0 66%, 9% 66%, 14% 42%, 0 42%, 0 24%, 17% 24%) !important;
+}
+
+.log-status-grid > div:nth-child(6)::before{
+  clip-path: polygon(50% 0, 88% 38%, 64% 38%, 64% 76%, 36% 76%, 36% 38%, 12% 38%) !important;
+}
+
+[data-theme="dark"] .log-status-grid > div:nth-child(2)::before{
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] .log-status-grid > div:nth-child(3)::before{
+  color: #fbbf24 !important;
+}
+
+/* Mobile visual check pass: tighter header, stable controls, clearer logout mark. */
+#logoutBtn{
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M4 4h8v2H6v12h6v2H4V4Zm11.6 3.4 4.6 4.6-4.6 4.6-1.4-1.4 2.2-2.2H10v-2h6.4l-2.2-2.2 1.4-1.4Z'/%3E%3C/svg%3E") !important;
+}
+
+@media (max-width: 640px){
+  .wrap{
+    padding: 12px !important;
+  }
+
+  .topbar{
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .brand h1{
+    font-size: 28px !important;
+    line-height: 1 !important;
+  }
+
+  .actions{
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .locale-switch,
+  #themeToggle,
+  #logoutBtn{
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 34px !important;
+  }
+
+  .locale-switch{
+    flex: 0 0 96px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+  }
+
+  .locale-option{
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  #themeToggle{
+    flex: 1 1 126px !important;
+  }
+
+  #logoutBtn{
+    flex: 0 1 96px !important;
+  }
+
+  #themeToggle,
+  #logoutBtn{
+    padding: 0 9px !important;
+    justify-content: center !important;
+    gap: 5px !important;
+  }
+
+  #themeToggle .btn-label,
+  #logoutBtn{
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .card{
+    padding: 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .card h2{
+    gap: 6px !important;
+  }
+}
+
+@media (max-width: 380px){
+  #themeToggle{
+    flex: 0 0 40px !important;
+  }
+}
+
+/* Player/log final fixes after visual QA. */
+.players-list{
+  padding-bottom: 0 !important;
+}
+
+.players-table-wrap{
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  max-height: 236px !important;
+  overflow: auto !important;
+}
+
+.players-table{
+  height: auto !important;
+  border-spacing: 0 !important;
+}
+
+.players-table tbody{
+  height: auto !important;
+}
+
+.players-table tbody tr{
+  height: auto !important;
+}
+
+.players-table th{
+  height: 26px !important;
+  padding: 0 10px !important;
+  background: rgba(15,23,42,.05) !important;
+}
+
+[data-theme="dark"] .players-table th{
+  background: rgba(15,23,42,.38) !important;
+}
+
+.players-table td{
+  height: 44px !important;
+  padding: 7px 10px !important;
+  border-radius: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+
+.players-table td:first-child{
+  border-left: 1px solid var(--border) !important;
+  border-radius: 10px 0 0 10px !important;
+}
+
+.players-table td:last-child{
+  border-right: 1px solid var(--border) !important;
+  border-radius: 0 10px 10px 0 !important;
+}
+
+.players-empty-row td{
+  height: 76px !important;
+  min-height: 0 !important;
+}
+
+.players-pager{
+  position: static !important;
+  width: 100% !important;
+  margin-top: 8px !important;
+  justify-content: flex-end !important;
+}
+
+.players-pager-actions{
+  display: inline-flex !important;
+}
+
+.players-page-btn{
+  position: relative !important;
+  width: 32px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+}
+
+.players-page-btn::before{
+  content: "" !important;
+  display: block !important;
+  width: 15px !important;
+  height: 15px !important;
+  background: currentColor !important;
+  opacity: .9 !important;
+  -webkit-mask: var(--pager-icon) center / contain no-repeat !important;
+  mask: var(--pager-icon) center / contain no-repeat !important;
+}
+
+.players-page-prev{
+  --pager-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m15.5 5-7 7 7 7 1.5-1.5L11.5 12 17 6.5 15.5 5Z'/%3E%3C/svg%3E");
+}
+
+.players-page-next{
+  --pager-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='m8.5 19 7-7-7-7L7 6.5l5.5 5.5L7 17.5 8.5 19Z'/%3E%3C/svg%3E");
+}
+
+.players-pager .badge{
+  box-shadow: none !important;
+}
+
+#themeToggle .icon::before{
+  border-radius: 0 !important;
+  background: currentColor !important;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M21 14.7A8.5 8.5 0 0 1 9.3 3a7 7 0 1 0 11.7 11.7Z'/%3E%3C/svg%3E") center / contain no-repeat !important;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M21 14.7A8.5 8.5 0 0 1 9.3 3a7 7 0 1 0 11.7 11.7Z'/%3E%3C/svg%3E") center / contain no-repeat !important;
+}
+
+[data-theme="dark"] #themeToggle .icon::before{
+  background: currentColor !important;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 4h1v3h-2V4h1Zm0 13h1v3h-2v-3h1ZM4 11h3v2H4v-2Zm13 0h3v2h-3v-2ZM6.3 4.9 8.4 7 7 8.4 4.9 6.3l1.4-1.4Zm10.7 10.7 2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4Zm.7-10.7 1.4 1.4L17 8.4 15.6 7l2.1-2.1ZM7 15.6 8.4 17l-2.1 2.1-1.4-1.4L7 15.6ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z'/%3E%3C/svg%3E") center / contain no-repeat !important;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 4h1v3h-2V4h1Zm0 13h1v3h-2v-3h1ZM4 11h3v2H4v-2Zm13 0h3v2h-3v-2ZM6.3 4.9 8.4 7 7 8.4 4.9 6.3l1.4-1.4Zm10.7 10.7 2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4Zm.7-10.7 1.4 1.4L17 8.4 15.6 7l2.1-2.1ZM7 15.6 8.4 17l-2.1 2.1-1.4-1.4L7 15.6ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z'/%3E%3C/svg%3E") center / contain no-repeat !important;
+}
+
+#wsClear,
+#logClear{
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 2v8h2v-8h-2Zm4 0v8h2v-8h-2Z'/%3E%3C/svg%3E") !important;
+}
+
+/* PC layout correction: unified first-row cards with filled internal panes. */
+@media (min-width: 900px){
+  .grid{
+    align-items: stretch !important;
+  }
+
+  .cfg,
+  .players,
+  .map{
+    align-self: stretch !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .cfg{
+    grid-column: 1 / 6 !important;
+    grid-row: 1 !important;
+  }
+
+  .players{
+    grid-column: 6 / 10 !important;
+    grid-row: 1 !important;
+  }
+
+  .map{
+    grid-column: 10 / 13 !important;
+    grid-row: 1 !important;
+  }
+
+  .players-list{
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .players-table-wrap{
+    flex: 1 1 auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+  }
+
+  .players-table{
+    height: auto !important;
+  }
+
+  .players-table tbody,
+  .players-table tbody tr{
+    height: auto !important;
+  }
+
+  .cfg{
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .cfg .preset-groups{
+    flex: 1 1 auto !important;
+    align-items: stretch !important;
+  }
+
+  .cfg .preset-group{
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+  }
+
+  .cfg .pillbar{
+    align-content: flex-start !important;
+  }
+
+  .map{
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .map .section-title{
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+
+  #wsClear{
+    width: auto !important;
+    min-height: 28px !important;
+    padding: 6px 9px !important;
+    border-radius: 999px !important;
+    gap: 5px !important;
+    color: #dc2626 !important;
+    background: rgba(220,38,38,.04) !important;
+    border-color: rgba(220,38,38,.18) !important;
+    box-shadow: none !important;
+  }
+
+  #wsClear::before{
+    width: 14px !important;
+    height: 14px !important;
+    flex-basis: 14px !important;
+  }
+}
+
+/* Log pane behavior: fixed viewport with internal scroll, never page-stretching. */
+.logs-card .logbox,
+#logbox{
+  flex: 0 0 auto !important;
+  height: clamp(260px, 34vh, 420px) !important;
+  min-height: 260px !important;
+  max-height: 420px !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+}
+
+@media (min-width: 900px){
+  .logs-card.span-2 .logbox{
+    flex: 0 0 auto !important;
+    height: clamp(280px, 35vh, 430px) !important;
+    min-height: 280px !important;
+    max-height: 430px !important;
+  }
+}
+
+#wsClear.is-disabled,
+#wsClear:disabled{
+  opacity: .45 !important;
+  cursor: not-allowed !important;
+  color: var(--muted) !important;
+  background: rgba(148,163,184,.06) !important;
+  border-color: rgba(148,163,184,.18) !important;
+}
+
+/* Stability, scrollbars, player cards, and RCON clear controls. */
+:root{
+  --panel-bg: var(--panel);
+  --panel-border: var(--border);
+  --scrollbar-track: #e5e7eb;
+  --scrollbar-thumb: #94a3b8;
+  --scrollbar-thumb-hover: #64748b;
+}
+
+[data-theme="dark"]{
+  --panel-bg: #111827;
+  --panel-border: rgba(148,163,184,.20);
+  --scrollbar-track: #0b1220;
+  --scrollbar-thumb: #334155;
+  --scrollbar-thumb-hover: #475569;
+}
+
+*{
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar{
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track{
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb{
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover{
+  background: var(--scrollbar-thumb-hover);
+}
+
+.btn,
+.mini-btn,
+.badge,
+.tag{
+  min-height: 30px !important;
+}
+
+.actions .btn{
+  min-width: 92px !important;
+  justify-content: center !important;
+}
+
+#themeToggle{
+  width: 132px !important;
+}
+
+#logoutBtn{
+  width: 92px !important;
+}
+
+.log-action-row .btn{
+  min-width: 116px !important;
+  justify-content: center !important;
+}
+
+#logClear,
+#rconClear{
+  min-width: 72px !important;
+  justify-content: center !important;
+}
+
+.console-title-actions{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  min-width: 142px !important;
+  flex: 0 0 auto !important;
+}
+
+#rconClear{
+  height: 30px !important;
+  padding: 0 10px !important;
+  border-radius: 999px !important;
+}
+
+#rconClear::before{
+  content: "x" !important;
+}
+
+.players-top{
+  grid-template-columns: minmax(150px, 1fr) minmax(130px, .75fr) minmax(92px, auto) 34px !important;
+}
+
+#playerCount{
+  min-width: 96px !important;
+  text-align: center !important;
+  justify-content: center !important;
+}
+
+.players-card-list{
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  min-height: 118px !important;
+  max-height: 260px !important;
+  padding: 6px !important;
+  overflow: auto !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 10px !important;
+  background: rgba(15,23,42,.03) !important;
+}
+
+[data-theme="dark"] .players-card-list{
+  background: rgba(15,23,42,.36) !important;
+}
+
+.player-card-row{
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 58px 120px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 52px !important;
+  padding: 7px 8px !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 8px !important;
+  background: rgba(255,255,255,.62) !important;
+  transition: background .15s ease, border-color .15s ease !important;
+}
+
+[data-theme="dark"] .player-card-row{
+  background: rgba(15,23,42,.58) !important;
+}
+
+.player-card-row:hover{
+  border-color: rgba(37,99,235,.38) !important;
+  background: rgba(37,99,235,.08) !important;
+}
+
+[data-theme="dark"] .player-card-row:hover{
+  border-color: rgba(96,165,250,.48) !important;
+  background: rgba(96,165,250,.11) !important;
+}
+
+.player-card-main,
+.player-identity,
+.player-meta,
+.player-title-row{
+  min-width: 0 !important;
+}
+
+.player-identity{
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+.player-avatar{
+  width: 34px !important;
+  height: 34px !important;
+  flex: 0 0 34px !important;
+  border-radius: 10px !important;
+  object-fit: cover !important;
+  background: #111827 !important;
+}
+
+.player-title-row{
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.player-name{
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.player-type-badge{
+  flex: 0 0 auto !important;
+  min-width: 38px !important;
+  height: 18px !important;
+  padding: 0 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid rgba(148,163,184,.22) !important;
+  border-radius: 999px !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.player-team-badge{
+  flex: 0 0 auto !important;
+  min-width: 28px !important;
+  height: 18px !important;
+  padding: 0 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.player-team-badge.team-ct{
+  color: #1d4ed8 !important;
+  border: 1px solid rgba(37,99,235,.30) !important;
+  background: rgba(59,130,246,.12) !important;
+}
+
+[data-theme="dark"] .player-team-badge.team-ct{
+  color: #93c5fd !important;
+  border-color: rgba(96,165,250,.34) !important;
+  background: rgba(59,130,246,.16) !important;
+}
+
+.player-team-badge.team-t{
+  color: #92400e !important;
+  border: 1px solid rgba(245,158,11,.34) !important;
+  background: rgba(245,158,11,.16) !important;
+}
+
+[data-theme="dark"] .player-team-badge.team-t{
+  color: #fcd34d !important;
+  border-color: rgba(251,191,36,.38) !important;
+  background: rgba(245,158,11,.18) !important;
+}
+
+.player-team-badge.team-spec{
+  color: var(--muted) !important;
+  border: 1px solid rgba(148,163,184,.24) !important;
+  background: rgba(148,163,184,.10) !important;
+}
+
+.player-sub{
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.player-userid{
+  min-width: 44px !important;
+  justify-content: center !important;
+  text-align: center !important;
+  font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace !important;
+}
+
+.player-actions{
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+.player-card-row .player-actions .mini-btn{
+  opacity: .18 !important;
+  transition: opacity .15s ease, border-color .15s ease, background .15s ease !important;
+}
+
+.player-card-row:hover .player-actions .mini-btn,
+.player-card-row .player-actions .mini-btn:focus-visible{
+  opacity: 1 !important;
+}
+
+.player-icon-action{
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-decoration: none !important;
+}
+
+.player-card-row .mini-danger{
+  width: 58px !important;
+  min-width: 58px !important;
+  height: 28px !important;
+  padding: 0 8px !important;
+  color: var(--danger) !important;
+  background: rgba(220,38,38,.06) !important;
+  border-color: rgba(220,38,38,.20) !important;
+}
+
+[data-theme="dark"] .player-card-row .mini-danger{
+  background: rgba(248,113,113,.08) !important;
+  border-color: rgba(248,113,113,.24) !important;
+}
+
+.players-empty-state{
+  min-height: 94px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--muted) !important;
+  text-align: center !important;
+}
+
+.players-pager{
+  min-height: 32px !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+}
+
+.players-page-btn:disabled{
+  opacity: .45 !important;
+}
+
+.players-pager .badge{
+  min-width: 96px !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.toast{
+  position: fixed !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  z-index: 200 !important;
+  max-width: min(320px, calc(100vw - 36px)) !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 10px !important;
+  background: var(--panel-bg) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow) !important;
+  opacity: 0 !important;
+  transform: translateY(8px) !important;
+  pointer-events: none !important;
+  transition: opacity .16s ease, transform .16s ease !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.toast.show{
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+@media (max-width: 640px){
+  .player-card-row{
+    grid-template-columns: minmax(0, 1fr) 52px !important;
+  }
+
+  .player-actions{
+    grid-column: 1 / -1 !important;
+  }
+
+  .player-card-row .player-actions .mini-btn{
+    opacity: 1 !important;
+  }
+}
+
+/* Player panel fill fix: the list should occupy the available card body. */
+.players{
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.players-list{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+.players-card-list{
+  flex: 1 1 auto !important;
+  max-height: none !important;
+  min-height: 180px !important;
+}
+
+@media (min-width: 900px){
+  .players-card-list{
+    min-height: 0 !important;
+  }
+}
+
+/* Pull the player list frame down to the pager while preserving card height. */
+@media (min-width: 900px){
+  .players{
+    align-self: stretch !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .players-list{
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) 32px !important;
+    flex: 1 1 auto !important;
+    min-height: 260px !important;
+    height: auto !important;
+    gap: 8px !important;
+    margin-top: 8px !important;
+  }
+
+  .players-card-list{
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .players-pager{
+    align-self: end !important;
+    margin-top: 0 !important;
+  }
+}
+
+/* CVAR presets can grow; keep the card height stable and scroll internally. */
+.cfg{
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+
+.cfg .preset-groups{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: clamp(190px, 30vh, 330px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  padding-right: 4px !important;
+}
+
+.cfg .preset-group{
+  min-height: 0 !important;
+}
+
+@media (max-width: 899px){
+  .cfg .preset-groups{
+    max-height: 420px !important;
+  }
+}
+
+/* CVAR final layout: four tidy columns, no awkward wrapped group row. */
+.cfg .preset-groups{
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+  padding-right: 0 !important;
+}
+
+.cfg .preset-group{
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.cfg .preset-group .pillbar{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  align-content: flex-start !important;
+  padding-right: 2px !important;
+}
+
+.cfg .preset-group .pill{
+  max-width: 100% !important;
+}
+
+@media (max-width: 1280px){
+  .cfg .preset-groups{
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .cfg .preset-group{
+    min-height: 132px !important;
+  }
+}
+
+@media (max-width: 899px){
+  .cfg .preset-groups{
+    grid-template-columns: 1fr !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Player pager: one compact control aligned to the bottom-right. */
+.players-pager{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  width: auto !important;
+  justify-self: end !important;
+  align-self: end !important;
+  min-height: 34px !important;
+  padding: 3px !important;
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.38) !important;
+}
+
+[data-theme="dark"] .players-pager{
+  background: rgba(15,23,42,.46) !important;
+}
+
+.players-pager-actions{
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.players-page-btn{
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+.players-pager .badge{
+  min-width: 86px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  padding: 0 9px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.players-page-btn:disabled{
+  opacity: .38 !important;
+}
+
+@media (min-width: 900px){
+  .players-list{
+    grid-template-rows: minmax(0, 1fr) 36px !important;
+  }
+}
+
+/* Lightweight rendering polish: isolate busy panels and tighten controls. */
+.card{
+  contain: layout paint !important;
+}
+
+.players-card-list,
+.cfg .preset-group .pillbar,
+#logbox,
+#out{
+  contain: content !important;
+}
+
+.cfg .preset-groups{
+  scrollbar-gutter: stable !important;
+}
+
+.cfg .preset-group{
+  border-radius: 10px !important;
+  border-color: rgba(148,163,184,.20) !important;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.54), rgba(255,255,255,.28)),
+    rgba(15,23,42,.03) !important;
+}
+
+[data-theme="dark"] .cfg .preset-group{
+  border-color: rgba(148,163,184,.18) !important;
+  background:
+    linear-gradient(180deg, rgba(30,41,59,.38), rgba(15,23,42,.22)),
+    rgba(15,23,42,.48) !important;
+}
+
+.cfg .preset-title{
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  min-height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 0 6px !important;
+  background: inherit !important;
+  color: var(--text) !important;
+  letter-spacing: 0 !important;
+}
+
+.cfg .preset-title::after{
+  content: "" !important;
+  height: 1px !important;
+  flex: 1 1 auto !important;
+  margin-left: 8px !important;
+  background: rgba(148,163,184,.18) !important;
+}
+
+.cfg .preset-group .pillbar{
+  gap: 7px !important;
+}
+
+.cfg .preset-group .pill{
+  min-height: 30px !important;
+  padding: 0 9px !important;
+  justify-content: flex-start !important;
+  border-color: rgba(148,163,184,.22) !important;
+  background: rgba(255,255,255,.36) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.12) inset !important;
+}
+
+[data-theme="dark"] .cfg .preset-group .pill{
+  background: rgba(15,23,42,.42) !important;
+  border-color: rgba(148,163,184,.20) !important;
+}
+
+.cfg .preset-group .pill:hover{
+  background: rgba(37,99,235,.10) !important;
+  border-color: rgba(96,165,250,.40) !important;
+}
+
+[data-theme="dark"] .cfg .preset-group .pill:hover{
+  background: rgba(96,165,250,.13) !important;
+}
+
+.player-card-row{
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset !important;
+}
+
+.player-card-row:hover{
+  transform: translateY(-1px) !important;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Redone map/player/CVAR controls pass. */
+.map-grid{
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.map{
+  overflow: visible !important;
+}
+
+@media (min-width: 1500px){
+  .map-grid{
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+.map-tile{
+  position: relative !important;
+  min-height: 48px !important;
+  padding: 8px !important;
+  gap: 7px !important;
+  border-radius: 9px !important;
+  overflow: visible !important;
+}
+
+.map-thumb{
+  width: 28px !important;
+  height: 28px !important;
+  flex-basis: 28px !important;
+  border-radius: 8px !important;
+}
+
+.map-meta{
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.map-name{
+  font-size: 12.5px !important;
+  line-height: 1.15 !important;
+}
+
+.map-sub{
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+}
+
+.map-tile:hover::after{
+  content: attr(data-full-name) !important;
+  position: absolute !important;
+  left: 8px !important;
+  right: 8px !important;
+  top: calc(100% + 5px) !important;
+  z-index: 80 !important;
+  padding: 7px 8px !important;
+  border: 1px solid rgba(96,165,250,.32) !important;
+  border-radius: 8px !important;
+  background: var(--panel-bg) !important;
+  color: var(--text) !important;
+  box-shadow: 0 14px 28px rgba(0,0,0,.28) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  pointer-events: none !important;
+}
+
+.preset-group .pill{
+  cursor: grab !important;
+}
+
+.preset-group .pill:active{
+  cursor: grabbing !important;
+}
+
+.preset-group .pill.is-dragging{
+  opacity: .55 !important;
+  transform: scale(.98) !important;
+  border-style: dashed !important;
+}
+
+.preset-group .pillbar{
+  overflow-x: hidden !important;
+}
+
+.players-list{
+  position: relative !important;
+  padding-bottom: 38px !important;
+}
+
+.players-pager{
+  position: absolute !important;
+  right: 6px !important;
+  bottom: 0 !important;
+  transform: none !important;
+  margin: 0 !important;
+}
+
+@media (min-width: 900px){
+  .players-list{
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .players-card-list{
+    margin-bottom: 0 !important;
+  }
+}
+
+/* Unified hover preview. Disable old pseudo-tooltips to avoid clipped/stuck previews. */
+.preset-group .pill::after,
+.map-tile:hover::after{
+  content: none !important;
+  display: none !important;
+}
+
+.hover-preview{
+  position: fixed !important;
+  z-index: 1000 !important;
+  max-width: min(320px, calc(100vw - 24px)) !important;
+  padding: 7px 9px !important;
+  border: 1px solid rgba(96,165,250,.34) !important;
+  border-radius: 8px !important;
+  background: var(--panel-bg) !important;
+  color: var(--text) !important;
+  box-shadow: 0 16px 34px rgba(0,0,0,.34) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transform: translateY(3px) !important;
+  transition: opacity .10s ease, transform .10s ease !important;
+}
+
+.hover-preview.show{
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.player-type-badge.is-human{
+  color: #047857 !important;
+  border-color: rgba(16,185,129,.36) !important;
+  background: rgba(16,185,129,.10) !important;
+}
+
+[data-theme="dark"] .player-type-badge.is-human{
+  color: #6ee7b7 !important;
+  border-color: rgba(52,211,153,.34) !important;
+  background: rgba(52,211,153,.12) !important;
+}
+
+.player-type-badge.is-bot{
+  color: #1d4ed8 !important;
+  border-color: rgba(59,130,246,.34) !important;
+  background: rgba(59,130,246,.12) !important;
+}
+
+[data-theme="dark"] .player-type-badge.is-bot{
+  color: #93c5fd !important;
+  border-color: rgba(96,165,250,.36) !important;
+  background: rgba(96,165,250,.14) !important;
+}
+
+/* Hard-center player pager arrow icons over older button/icon rules. */
+.players-page-btn{
+  display: inline-grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  font-size: 0 !important;
+}
+
+.players-page-btn::before{
+  display: block !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  transform: none !important;
+  place-self: center !important;
+  flex: none !important;
 }
