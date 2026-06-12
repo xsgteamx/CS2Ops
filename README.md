@@ -13,13 +13,16 @@ Simplified Chinese documentation: [README_ZH.md](README_ZH.md)
 ## What It Does
 
 - Browser dashboard protected by login session cookies, with Basic Auth fallback
-- RCON console for arbitrary CS2 commands
-- CVAR presets for match, economy, and practice workflows
+- Login failure captcha and temporary lockout controls
+- RCON console for arbitrary CS2 commands, with clear output action
+- CVAR presets for match, game mode, economy, and practice workflows
 - Standard map switching and Workshop map launch by ID
 - Browser-local Workshop favorites
-- Player list, search, kick action, and SteamID64 detection from logs
-- Live log viewer powered by Server-Sent Events
+- Player card list with search, kick action, BOT/HUMAN labels, SteamID64 copy, and Steam profile links
+- SteamID64 detection from logs, with optional Steam avatar enrichment
+- Live log viewer powered by Server-Sent Events plus 1-second polling fallback
 - Docker log source, HTTP remote log receiver, or no-log mode
+- Dark/light themes, bilingual UI, and stable dashboard layout for language switching
 
 CS2Ops is not a full game-server deployment panel. It does not manage CS2 installation, Docker containers, or host-level orchestration.
 
@@ -82,14 +85,29 @@ Minimal panel and RCON settings:
 ```env
 PANEL_PORT=8080
 PANEL_BIND_HOST=127.0.0.1
+PANEL_BASE_PATH=
 PANEL_USER=admin
 PANEL_PASS=change_me
 PANEL_SESSION_SECRET=change_me_long_random_session_secret
+LOGIN_CAPTCHA_ENABLED=true
+LOGIN_CAPTCHA_AFTER_FAILURES=2
+LOGIN_LOCK_AFTER_FAILURES=10
 
 CS2_HOST=127.0.0.1
 CS2_PORT=27015
 CS2_RCON_PASSWORD=change_me
 ```
+
+Set `PANEL_BASE_PATH=/admin` only when a reverse proxy serves the whole panel under that subpath. Leave it empty for root deployments.
+
+Optional Steam avatar settings:
+
+```env
+STEAM_WEB_API_KEY=
+STEAM_AVATAR_TTL_MS=43200000
+```
+
+When `STEAM_WEB_API_KEY` is empty, the player list still works and uses local fallback avatars. The Steam Web API is only used as an optional enhancement.
 
 Choose one live log source:
 
@@ -134,12 +152,24 @@ LOG_HTTP_PORT=27500
 LOG_HTTP_PATH=/cs2log
 LOG_HTTP_SECRET=change_me_long_random_token
 LOG_HTTP_PUBLIC_URL=http://10.6.0.2:27500/cs2log/change_me_long_random_token
-LOG_HTTP_MAX_BODY=64kb
+LOG_HTTP_MAX_BODY=1mb
+LOG_HTTP_MAX_LINES_PER_REQUEST=200
+LOG_HTTP_MAX_LINES_PER_WINDOW=200
+LOG_HTTP_MAX_LINES_WINDOW_MS=10000
+LOG_HTTP_DROP_OLDER_THAN_MS=300000
 LOG_HTTP_ALLOW_IPS=
 LOG_HTTP_RCON_REGISTER=true
 ```
 
 `LOG_HTTP_PUBLIC_URL` is the exact URL written into CS2 through RCON. The panel only shows a masked version and never exposes the full secret to the frontend.
+
+HTTP log handling:
+
+- Each accepted log line receives a monotonic `seq` cursor.
+- The browser refreshes HTTP logs about once per second when visible.
+- Clearing the HTTP log view records the current cursor, so old lines do not reappear on the next refresh.
+- The receiver filters noisy cvar dumps, sensitive-looking lines, stale lines, and excessive bursts according to the `LOG_HTTP_*` limits.
+- Running RCON commands, refreshing status, registering/unregistering HTTP logs, and map/Workshop actions trigger an immediate log refresh.
 
 Health check:
 
@@ -186,6 +216,16 @@ logaddress_list_http
 
 It does not run `log off`, so local server logging is not disabled.
 
+## Player List
+
+`/api/players` combines `users`, `status`, and recent log data:
+
+- `status` is the primary source for the visible player rows.
+- BOT detection uses explicit `BOT` markers from `status` or server-provided fields; it does not rely on player names.
+- Real players can show SteamID64 when known from `status` or recent log lines.
+- SteamID64 values can be copied, and valid real-player SteamID64 values link to `https://steamcommunity.com/profiles/<steamid64>`.
+- Avatars use Steam Web API data only when `STEAM_WEB_API_KEY` is configured; otherwise local fallback avatars are shown.
+
 ## No-Log Mode
 
 ```env
@@ -216,6 +256,12 @@ Make sure Server-Sent Events are not buffered for:
 
 If you deploy under a subpath such as `/admin/`, ensure the proxy forwards static assets, API routes, login, logout, and SSE consistently.
 
+For subpath deployments, also set:
+
+```env
+PANEL_BASE_PATH=/admin
+```
+
 ## Useful Endpoints
 
 Panel:
@@ -223,6 +269,8 @@ Panel:
 ```text
 GET  /
 GET  /login
+GET  /login/captcha-status
+GET  /login/captcha
 POST /login
 POST /logout
 ```
@@ -244,9 +292,11 @@ Logs:
 ```text
 GET  /api/logs/stream
 GET  /api/logs/status
+GET  /api/logs/recent
 POST /api/logs/register-http
 POST /api/logs/unregister-http
 POST /api/logs/test
+POST /api/logs/clear
 ```
 
 HTTP receiver:
@@ -285,6 +335,8 @@ For `LOG_SOURCE=docker`, the service account must be allowed to read Docker logs
 ```bash
 node --check server.js
 node --check public/app.js
+node --check src/steamIdTracker.js
+npm audit
 npm start
 ```
 
